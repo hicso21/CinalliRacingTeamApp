@@ -1,14 +1,16 @@
 import type React from "react"
 import { Header } from "./header"
 import { Sidebar } from "./sidebar"
+import { useStorage } from "@/hooks/use-storage"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  if (!localStorage?.getItem('markupPercentage')) localStorage?.setItem('markupPercentage', '0.3')
-  if (!localStorage?.getItem('lubricentro_settings')) localStorage?.setItem('lubricentro_settings', JSON.stringify({
+  const storage = useStorage()
+  if (!storage?.getItem('markupPercentage')) storage?.setItem('markupPercentage', '0.3')
+  if (!storage?.getItem('lubricentro_settings')) storage?.setItem('lubricentro_settings', JSON.stringify({
     autoSync: true,
     lowStockThreshold: 5,
     backupFrequency: "daily",

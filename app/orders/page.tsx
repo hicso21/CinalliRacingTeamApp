@@ -12,6 +12,7 @@ import { Plus, TrendingUp, Search, Package, Clock, CheckCircle } from "lucide-re
 import { PurchaseOrderDialog } from "@/components/orders/purchase-order-dialog"
 import { OrdersTable } from "@/components/orders/orders-table"
 import { useToast } from "@/hooks/use-toast"
+import { useStorage } from "@/hooks/use-storage"
 
 export default function OrdersPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -142,6 +143,7 @@ export default function OrdersPage() {
 
   const handleOrderSave = async (orderData: Omit<PurchaseOrder, "id" | "created_at">) => {
     try {
+      const storage = useStorage()
       if (editingOrder) {
         // Update existing order
         const updatedOrder = {
@@ -155,7 +157,7 @@ export default function OrdersPage() {
         if (!OfflineSync.isOnline()) {
           const pendingOrders = OfflineSync.getPendingPurchaseOrders()
           const updatedPending = pendingOrders.map((order) => (order.id === editingOrder.id ? updatedOrder : order))
-          localStorage.setItem("lubricentro_purchase_orders", JSON.stringify(updatedPending))
+          storage.setItem("lubricentro_purchase_orders", JSON.stringify(updatedPending))
         }
 
         toast({
@@ -245,6 +247,7 @@ export default function OrdersPage() {
   }
 
   const handleOrderDelete = async (order: PurchaseOrder) => {
+    const storage = useStorage()
     if (!confirm(`¿Estás seguro de eliminar el pedido ${order.id}?`)) return
 
     try {
@@ -254,7 +257,7 @@ export default function OrdersPage() {
       if (order.id?.startsWith("order_")) {
         const pendingOrders = OfflineSync.getPendingPurchaseOrders()
         const updatedPending = pendingOrders.filter((o) => o.id !== order.id)
-        localStorage.setItem("lubricentro_purchase_orders", JSON.stringify(updatedPending))
+        storage.setItem("lubricentro_purchase_orders", JSON.stringify(updatedPending))
       }
 
       toast({

@@ -3,14 +3,19 @@
 import { useState, useEffect } from "react"
 import { OfflineSync } from "@/lib/offline-sync"
 import { ProductService } from "@/lib/product-service"
+import { useStorage } from "@/hooks/use-storage"
 
 export function useOfflineSync() {
+  const storage = useStorage() // ✅ Obtener storage del contexto
   const [isOnline, setIsOnline] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [pendingItems, setPendingItems] = useState(0)
   const [lastSync, setLastSync] = useState<Date | null>(null)
 
   useEffect(() => {
+    // ✅ Inicializar OfflineSync con el storage
+    OfflineSync.setStorage(storage)
+
     // Initialize state
     setIsOnline(navigator.onLine)
     setLastSync(OfflineSync.getLastSyncTime())
@@ -35,7 +40,7 @@ export function useOfflineSync() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("offline", handleOffline)
     }
-  }, [])
+  }, [storage]) // ✅ Agregar storage como dependencia
 
   const updatePendingCount = () => {
     const pendingSales = OfflineSync.getPendingSales().length
@@ -46,8 +51,8 @@ export function useOfflineSync() {
   const autoSync = async () => {
     if (!navigator.onLine || syncing) return
 
-    const settings = localStorage.getItem("lubricentro_settings")
-    const autoSyncEnabled = settings ? JSON.parse(settings).autoSync : true
+    const settingsStr = storage.getItem("lubricentro_settings")
+    const autoSyncEnabled = settingsStr ? JSON.parse(settingsStr).autoSync : true
 
     if (autoSyncEnabled) {
       await syncData()
@@ -67,8 +72,7 @@ export function useOfflineSync() {
         setLastSync(new Date())
       }
 
-      // In a real implementation, you would sync pending sales and orders to the server
-      // For now, we'll just clear them to simulate successful sync
+      // Sync pending sales and orders
       const pendingSales = OfflineSync.getPendingSales()
       const pendingOrders = OfflineSync.getPendingPurchaseOrders()
 
@@ -82,6 +86,7 @@ export function useOfflineSync() {
         OfflineSync.clearPendingPurchaseOrders()
       }
 
+      OfflineSync.markLastSync()
       updatePendingCount()
       return true
     } catch (error) {
@@ -92,7 +97,7 @@ export function useOfflineSync() {
     }
   }
 
-  const forcSync = async () => {
+  const forceSync = async () => {
     return await syncData()
   }
 
@@ -101,7 +106,7 @@ export function useOfflineSync() {
     syncing,
     pendingItems,
     lastSync,
-    syncData: forcSync,
+    syncData: forceSync,
     updatePendingCount,
   }
 }

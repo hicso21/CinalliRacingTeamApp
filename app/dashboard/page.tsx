@@ -1,6 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -8,20 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
+  AlertTriangle,
+  Loader2,
   Package,
   ShoppingCart,
-  TrendingUp,
-  AlertTriangle,
-  DollarSign,
-  Loader2,
+  TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 
 // Importar el hook desde el archivo que acabamos de crear
 import { useDashboard } from "@/hooks/user-dashboard-page";
-import MockProductService from "@/mock/Product";
 
 export default function DashboardPage() {
   const {

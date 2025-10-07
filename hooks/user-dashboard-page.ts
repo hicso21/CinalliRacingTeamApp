@@ -1,7 +1,6 @@
 // hooks/use-dashboard.ts
 "use client";
 import { ProductService } from "@/lib/product-service";
-import MockProductService from "@/mock/Product";
 import { useEffect, useState } from "react";
 
 // Tipos básicos para evitar problemas de importación

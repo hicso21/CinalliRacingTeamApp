@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { OfflineSync } from "@/lib/offline-sync"
 import { Settings, Database, Download, Upload, Trash2, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useStorage } from "@/hooks/use-storage"
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -36,17 +37,19 @@ export default function SettingsPage() {
 
   const loadSettings = () => {
     // Load settings from localStorage
-    const savedSettings = localStorage.getItem("lubricentro_settings")
+    const storage = useStorage()
+    const savedSettings = storage.getItem("lubricentro_settings")
     if (savedSettings) {
       setSettings({ ...JSON.parse(savedSettings), markupPercentage: JSON.parse(savedSettings).markupPercentage * 100 || 0.3 })
     }
   }
 
   const loadStorageInfo = () => {
+    const storage = useStorage()
     const products = OfflineSync.getProductsFromLocal()
     const sales = OfflineSync.getPendingSales()
     const orders = OfflineSync.getPendingPurchaseOrders()
-    const lastBackup = localStorage.getItem("lubricentro_last_backup")
+    const lastBackup = storage.getItem("lubricentro_last_backup")
 
     setStorageInfo({
       products: products.length,
@@ -57,7 +60,8 @@ export default function SettingsPage() {
   }
 
   const saveSettings = () => {
-    localStorage.setItem("lubricentro_settings", JSON.stringify({ ...settings, markupPercentage: settings.markupPercentage / 100 }))
+    const storage = useStorage()
+    storage.setItem("lubricentro_settings", JSON.stringify({ ...settings, markupPercentage: settings.markupPercentage / 100 }))
     toast({
       title: "Configuración guardada",
       description: "Los cambios se han aplicado correctamente",
@@ -66,6 +70,7 @@ export default function SettingsPage() {
 
   const exportData = () => {
     try {
+      const storage = useStorage()
       const data = {
         products: OfflineSync.getProductsFromLocal(),
         sales: OfflineSync.getPendingSales(),
@@ -84,7 +89,7 @@ export default function SettingsPage() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      localStorage.setItem("lubricentro_last_backup", new Date().toISOString())
+      storage.setItem("lubricentro_last_backup", new Date().toISOString())
       loadStorageInfo()
 
       toast({
@@ -102,6 +107,7 @@ export default function SettingsPage() {
   }
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const storage = useStorage()
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -115,7 +121,7 @@ export default function SettingsPage() {
         }
         if (data.settings) {
           setSettings(data.settings)
-          localStorage.setItem("lubricentro_settings", JSON.stringify(data.settings))
+          storage.setItem("lubricentro_settings", JSON.stringify(data.settings))
         }
 
         loadStorageInfo()
@@ -137,17 +143,18 @@ export default function SettingsPage() {
   }
 
   const clearAllData = () => {
+    const storage = useStorage()
     if (!confirm("¿Estás seguro de eliminar todos los datos locales? Esta acción no se puede deshacer.")) {
       return
     }
 
     try {
-      localStorage.removeItem("lubricentro_products")
-      localStorage.removeItem("lubricentro_sales")
-      localStorage.removeItem("lubricentro_purchase_orders")
-      localStorage.removeItem("lubricentro_last_sync")
-      localStorage.removeItem("lubricentro_settings")
-      localStorage.removeItem("lubricentro_last_backup")
+      storage.removeItem("lubricentro_products")
+      storage.removeItem("lubricentro_sales")
+      storage.removeItem("lubricentro_purchase_orders")
+      storage.removeItem("lubricentro_last_sync")
+      storage.removeItem("lubricentro_settings")
+      storage.removeItem("lubricentro_last_backup")
 
       loadStorageInfo()
       loadSettings()
