@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useStorage } from "@/hooks/use-storage"
 
 export default function SettingsPage() {
+  const storage = useStorage()
   const [settings, setSettings] = useState({
     autoSync: true,
     lowStockThreshold: 5,
@@ -37,7 +38,6 @@ export default function SettingsPage() {
 
   const loadSettings = () => {
     // Load settings from localStorage
-    const storage = useStorage()
     const savedSettings = storage.getItem("lubricentro_settings")
     if (savedSettings) {
       setSettings({ ...JSON.parse(savedSettings), markupPercentage: JSON.parse(savedSettings).markupPercentage * 100 || 0.3 })
@@ -45,7 +45,6 @@ export default function SettingsPage() {
   }
 
   const loadStorageInfo = () => {
-    const storage = useStorage()
     const products = OfflineSync.getProductsFromLocal()
     const sales = OfflineSync.getPendingSales()
     const orders = OfflineSync.getPendingPurchaseOrders()
@@ -60,7 +59,6 @@ export default function SettingsPage() {
   }
 
   const saveSettings = () => {
-    const storage = useStorage()
     storage.setItem("lubricentro_settings", JSON.stringify({ ...settings, markupPercentage: settings.markupPercentage / 100 }))
     toast({
       title: "Configuración guardada",
@@ -70,7 +68,6 @@ export default function SettingsPage() {
 
   const exportData = () => {
     try {
-      const storage = useStorage()
       const data = {
         products: OfflineSync.getProductsFromLocal(),
         sales: OfflineSync.getPendingSales(),
@@ -107,7 +104,6 @@ export default function SettingsPage() {
   }
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const storage = useStorage()
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -143,7 +139,6 @@ export default function SettingsPage() {
   }
 
   const clearAllData = () => {
-    const storage = useStorage()
     if (!confirm("¿Estás seguro de eliminar todos los datos locales? Esta acción no se puede deshacer.")) {
       return
     }
@@ -175,9 +170,9 @@ export default function SettingsPage() {
 
   const getStorageSize = () => {
     let totalSize = 0
-    for (const key in localStorage) {
+    for (const key in storage) {
       if (key.startsWith("lubricentro_")) {
-        totalSize += localStorage[key].length
+        totalSize += storage[key].length
       }
     }
     return (totalSize / 1024).toFixed(2) // KB

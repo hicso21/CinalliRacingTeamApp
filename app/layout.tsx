@@ -19,13 +19,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <StorageProvider >
-      <html lang="es">
-        <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="es">
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+        <StorageProvider >
           <Suspense fallback={null}>{children}</Suspense>
           <Analytics />
-        </body>
-      </html>
-    </StorageProvider>
+        </StorageProvider>
+      </body>
+    </html>
   )
 }
