@@ -76,6 +76,7 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
           {(searchQuery || dateFilter) && (
             <Button
               variant="outline"
+              className="cursor-pointer"
               onClick={() => {
                 setSearchQuery("")
                 setDateFilter("")
@@ -113,7 +114,7 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
                     </TableCell>
                     <TableCell className="text-right">{sale.quantity}</TableCell>
                     <TableCell className="text-right">${sale.unit_price.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-medium">${sale.total.toLocaleString()}</TableCell>
+                    <TableCell className="text-right font-medium">${sale.total?.toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant={sale.id?.startsWith("temp_") ? "outline" : "secondary"}>
                         {sale.id?.startsWith("temp_") ? "Pendiente sync" : "Completada"}

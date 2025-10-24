@@ -284,7 +284,7 @@ export default function OrdersPage() {
           <p className="text-muted-foreground">Gestión de órdenes de compra y reposición de stock</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={() => setShowOrderDialog(true)} className="racing-shadow">
+          <Button onClick={() => setShowOrderDialog(true)} className="racing-shadow cursor-pointer">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Pedido
           </Button>

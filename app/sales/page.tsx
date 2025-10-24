@@ -505,6 +505,7 @@ export default function SalesPage() {
           {pendingSalesCount > 0 && (
             <Button
               variant="outline"
+              className="cursor-pointer"
               size="sm"
               onClick={handleOfflineSync}
               disabled={!isOnline || syncInProgress}
@@ -521,7 +522,7 @@ export default function SalesPage() {
           <Button
             onClick={() => setShowSaleDialog(true)}
             disabled={loading}
-            className="racing-shadow"
+            className="racing-shadow cursor-pointer"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

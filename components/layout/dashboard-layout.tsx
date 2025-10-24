@@ -1,22 +1,41 @@
-import type React from "react"
-import { Header } from "./header"
-import { Sidebar } from "./sidebar"
-import { useStorage } from "@/hooks/use-storage"
+import type React from "react";
+import { Header } from "./header";
+import { Sidebar } from "./sidebar";
+import { useStorage } from "@/hooks/use-storage";
+import { useEffect, useRef } from "react";
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const storage = useStorage()
-  if (!storage?.getItem('markupPercentage')) storage?.setItem('markupPercentage', '0.3')
-  if (!storage?.getItem('lubricentro_settings')) storage?.setItem('lubricentro_settings', JSON.stringify({
-    autoSync: true,
-    lowStockThreshold: 5,
-    backupFrequency: "daily",
-    notifications: true,
-    markupPercentage: 0.3
-  }))
+  const storage = useStorage();
+  const isInitialized = useRef(false);
+
+  useEffect(() => {
+    // Solo ejecutar una vez, incluso en Strict Mode
+    if (!storage || isInitialized.current) return;
+
+    // Verificar y establecer valores por defecto solo si no existen
+    if (!storage.getItem("markupPercentage")) {
+      storage.setItem("markupPercentage", "0.3");
+    }
+
+    if (!storage.getItem("lubricentro_settings")) {
+      storage.setItem(
+        "lubricentro_settings",
+        JSON.stringify({
+          autoSync: true,
+          lowStockThreshold: 5,
+          backupFrequency: "daily",
+          notifications: true,
+          markupPercentage: 0.3,
+        })
+      );
+    }
+
+    isInitialized.current = true;
+  }, [storage]); // ✅ Incluir storage en dependencias
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,5 +49,5 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

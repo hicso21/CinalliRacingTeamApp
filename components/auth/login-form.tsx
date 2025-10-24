@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthService } from "@/lib/auth-service";
 import { Loader2, LogIn } from "lucide-react";
+import { isPasswordPwned } from "@/lib/security";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -31,6 +32,14 @@ export function LoginForm() {
 
     try {
       console.log("Attempting login...");
+      const isLeaked = await isPasswordPwned(password);
+      if (isLeaked) {
+        setError(
+          "⚠️ Esta contraseña fue filtrada en brechas de datos. Por favor, cambia tu contraseña antes de continuar."
+        );
+        setIsLoading(false);
+        return;
+      }
       const { data, error } = await AuthService.signIn(email, password);
 
       if (error) {

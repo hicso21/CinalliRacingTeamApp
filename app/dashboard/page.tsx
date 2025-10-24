@@ -71,7 +71,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 cursor-pointer"
             >
               Reintentar
             </button>
@@ -223,14 +223,14 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 gap-2">
                 <Link
                   href="/sales"
-                  className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-muted transition-colors"
+                  className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-muted transition-colors cursor-pointer"
                 >
                   <ShoppingCart className="h-4 w-4" />
                   Nueva Venta
                 </Link>
                 <Link
                   href="/inventory"
-                  className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-muted transition-colors"
+                  className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-muted transition-colors cursor-pointer"
                 >
                   <Package className="h-4 w-4" />
                   Agregar Producto

@@ -28,13 +28,11 @@ import { ProductTable } from "@/components/inventory/product-table";
 import { ScannerStatus } from "@/components/barcode/scanner-status";
 import { useToast } from "@/hooks/use-toast";
 
-// Updated stats type to match the service response
 interface InventoryStats {
   totalProducts: number;
   totalValue: number;
   lowStockCount: number;
   categories: string[];
-  // Optional extended stats
   totalInventoryValue?: number;
   totalCostValue?: number;
   potentialProfit?: number;
@@ -50,7 +48,9 @@ export default function InventoryPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showProductDialog, setShowProductDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [stats, setStats] = useState<InventoryStats>({
     totalProducts: 0,
     totalValue: 0,
@@ -62,25 +62,19 @@ export default function InventoryPage() {
   useEffect(() => {
     const handleBarcodeScanned = (event: CustomEvent) => {
       const { barcode } = event.detail;
-
-      // Find product by barcode
       const product = products.find((p) => p.barcode === barcode);
 
       if (product) {
-        // Highlight the product in search
         setSearchQuery(barcode);
-        // Show success feedback
         toast({
           title: "Producto encontrado",
           description: `${product.name} - Stock: ${product.stock}`,
         });
 
-        // Auto-select for editing after a short delay
         setTimeout(() => {
           handleProductEdit(product);
         }, 1000);
       } else {
-        // Show error feedback
         setSearchQuery(barcode);
         toast({
           title: "Producto no encontrado",
@@ -103,12 +97,10 @@ export default function InventoryPage() {
     };
   }, [products, toast]);
 
-  // Load products on component mount
   useEffect(() => {
     loadProducts();
   }, []);
 
-  // Filter products when search or category changes
   useEffect(() => {
     filterProducts();
   }, [products, searchQuery, selectedCategory]);
@@ -117,24 +109,21 @@ export default function InventoryPage() {
     setLoading(true);
     try {
       if (OfflineSync.isOnline()) {
-        // Try to load from Supabase
         const { data, error } = await ProductService.getAllProducts();
 
         if (data && !error) {
           setProducts(data);
-          OfflineSync.saveProductsToLocal(data);
-
-          // Load stats - transform the service response to match component state
+          
+          // Load stats
           const statsResult = await ProductService.getInventoryStats();
           if (statsResult.data) {
             const transformedStats: InventoryStats = {
               totalProducts: statsResult.data.totalProducts,
-              totalValue: statsResult.data.totalInventoryValue, // Map from totalInventoryValue
+              totalValue: statsResult.data.totalInventoryValue,
               lowStockCount: statsResult.data.lowStockCount,
               categories: statsResult.data.categoryDistribution.map(
                 (cat) => cat.category
               ),
-              // Store additional stats as optional fields
               totalInventoryValue: statsResult.data.totalInventoryValue,
               totalCostValue: statsResult.data.totalCostValue,
               potentialProfit: statsResult.data.potentialProfit,
@@ -144,7 +133,7 @@ export default function InventoryPage() {
             setStats(transformedStats);
           }
         } else {
-          // Fallback to local storage
+          // Si falla la API, cargar desde local storage
           const localProducts = OfflineSync.getProductsFromLocal();
           setProducts(localProducts);
           calculateLocalStats(localProducts);
@@ -155,14 +144,14 @@ export default function InventoryPage() {
           });
         }
 
-        const { data: categoriesData, error: categoriesError } = await ProductService.getAllCategories();
+        const { data: categoriesData, error: categoriesError } =
+          await ProductService.getAllCategories();
 
         if (!categoriesError && categoriesData) {
           setCategories(categoriesData);
         }
-
       } else {
-        // Load from local storage when offline
+        // Sin conexión - cargar desde local storage
         const localProducts = OfflineSync.getProductsFromLocal();
         setProducts(localProducts);
         calculateLocalStats(localProducts);
@@ -208,7 +197,6 @@ export default function InventoryPage() {
   const filterProducts = () => {
     let filtered = products;
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(
         (product) =>
@@ -219,7 +207,6 @@ export default function InventoryPage() {
       );
     }
 
-    // Filter by category
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
         (product) => product.category === selectedCategory
@@ -233,71 +220,86 @@ export default function InventoryPage() {
     productData: Omit<Product, "id" | "created_at" | "updated_at">
   ) => {
     try {
-      // Ensure description is always a string for the service
       const safeProductData = {
         ...productData,
-        description: productData.description || "", // Convert undefined to empty string
+        description: productData.description || "",
       };
 
       if (editingProduct) {
-        // Update existing product
+        // ===== UPDATE EXISTING PRODUCT =====
         if (OfflineSync.isOnline()) {
           const { data, error } = await ProductService.updateProduct(
             editingProduct.id!,
             safeProductData
           );
           if (data && !error) {
-            setProducts((prev) =>
-              prev.map((p) => (p.id === editingProduct.id ? data : p))
+            // Calcular el nuevo array de productos
+            const updatedProducts = products.map((p) =>
+              p.id === editingProduct.id ? data : p
             );
+
+            // Actualizar estado y storage
+            setProducts(updatedProducts);
+            OfflineSync.saveProductsToLocal(updatedProducts);
+            calculateLocalStats(updatedProducts);
+
             toast({
               title: "Producto actualizado",
               description: `${data.name} se actualizó correctamente`,
             });
           }
         } else {
-          // Update locally when offline
           const updatedProduct = {
             ...editingProduct,
             ...safeProductData,
             updated_at: new Date().toISOString(),
           };
-          setProducts((prev) =>
-            prev.map((p) => (p.id === editingProduct.id ? updatedProduct : p))
-          );
+
           const updatedProducts = products.map((p) =>
             p.id === editingProduct.id ? updatedProduct : p
           );
+
+          setProducts(updatedProducts);
           OfflineSync.saveProductsToLocal(updatedProducts);
+          calculateLocalStats(updatedProducts);
+
           toast({
             title: "Producto actualizado (offline)",
             description: "Los cambios se sincronizarán cuando haya conexión",
           });
         }
       } else {
-        // Create new product
+        // ===== CREATE NEW PRODUCT =====
         if (OfflineSync.isOnline()) {
           const { data, error } = await ProductService.createProduct(
             safeProductData
           );
           if (data && !error) {
-            setProducts((prev) => [data, ...prev]);
+            const updatedProducts = [data, ...products];
+
+            setProducts(updatedProducts);
+            OfflineSync.saveProductsToLocal(updatedProducts);
+            calculateLocalStats(updatedProducts);
+
             toast({
               title: "Producto creado",
               description: `${data.name} se agregó al inventario`,
             });
           }
         } else {
-          // Create locally when offline
           const newProduct: Product = {
             ...safeProductData,
             id: `temp_${Date.now()}`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
-          setProducts((prev) => [newProduct, ...prev]);
+
           const updatedProducts = [newProduct, ...products];
+
+          setProducts(updatedProducts);
           OfflineSync.saveProductsToLocal(updatedProducts);
+          calculateLocalStats(updatedProducts);
+
           toast({
             title: "Producto creado (offline)",
             description: "Se sincronizará cuando haya conexión",
@@ -307,7 +309,6 @@ export default function InventoryPage() {
 
       setShowProductDialog(false);
       setEditingProduct(null);
-      loadProducts(); // Refresh data
     } catch (error) {
       console.error("Error saving product:", error);
       toast({
@@ -324,7 +325,7 @@ export default function InventoryPage() {
   };
 
   const handleProductDelete = async (product: Product) => {
-    if (!confirm(`¿Estás seguro de eliminar ${product.name}?`)) return;
+    // if (!confirm(`¿Estás seguro de eliminar ${product.name}?`)) return;
 
     try {
       if (OfflineSync.isOnline()) {
@@ -332,17 +333,24 @@ export default function InventoryPage() {
           product.id!
         );
         if (success && !error) {
-          setProducts((prev) => prev.filter((p) => p.id !== product.id));
+          const updatedProducts = products.filter((p) => p.id !== product.id);
+
+          setProducts(updatedProducts);
+          OfflineSync.saveProductsToLocal(updatedProducts);
+          calculateLocalStats(updatedProducts);
+
           toast({
             title: "Producto eliminado",
             description: `${product.name} se eliminó del inventario`,
           });
         }
       } else {
-        // Delete locally when offline
         const updatedProducts = products.filter((p) => p.id !== product.id);
+
         setProducts(updatedProducts);
         OfflineSync.saveProductsToLocal(updatedProducts);
+        calculateLocalStats(updatedProducts);
+
         toast({
           title: "Producto eliminado (offline)",
           description: "Los cambios se sincronizarán cuando haya conexión",
@@ -370,14 +378,6 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {/* <Button className="cursor-pointer" variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
-          <Button className="cursor-pointer" variant="outline" size="sm">
-            <Upload className="w-4 h-4 mr-2" />
-            Importar
-          </Button> */}
           <Button
             onClick={() => setShowProductDialog(true)}
             className="racing-shadow cursor-pointer"
@@ -445,11 +445,12 @@ export default function InventoryPage() {
             <Filter className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{categories.length}</div>
+            <div className="text-2xl font-bold text-primary">
+              {categories.length}
+            </div>
             <p className="text-xs text-muted-foreground">Tipos de productos</p>
           </CardContent>
         </Card>
-
       </div>
 
       {/* Filters */}
@@ -486,7 +487,6 @@ export default function InventoryPage() {
                   </option>
                 ))}
               </select>
-
             </div>
           </div>
         </CardContent>

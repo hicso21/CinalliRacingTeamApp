@@ -191,12 +191,14 @@ export function ProductTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[160px]">
                       <DropdownMenuItem
+                        className="cursor-pointer"
                         onClick={() => onEdit(product)}
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        className="cursor-pointer"
                         onClick={() => onDelete(product)}
                         variant="destructive"
                       >

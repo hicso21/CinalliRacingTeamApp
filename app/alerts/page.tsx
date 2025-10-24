@@ -145,7 +145,7 @@ export default function AlertsPage() {
           <p className="text-muted-foreground">Monitoreo de stock bajo y gestión de sincronización offline</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={syncPendingData} disabled={!isOnline || syncing} className="racing-shadow">
+          <Button onClick={syncPendingData} disabled={!isOnline || syncing} className="racing-shadow cursor-pointer">
             <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Sincronizando..." : "Sincronizar"}
           </Button>

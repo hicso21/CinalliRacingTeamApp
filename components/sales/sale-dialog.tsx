@@ -457,6 +457,7 @@ export function SaleDialog({
                   type="number"
                   placeholder="Descuento ($)"
                   value={discount}
+                  min={0}
                   onChange={(e) =>
                     setDiscount(Number.parseFloat(e.target.value) || 0)
                   }
