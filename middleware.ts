@@ -1,75 +1,93 @@
-// middleware.js
-export const runtime = "nodejs";
-
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Creamos la respuesta base
-  let supabaseResponse = NextResponse.next({ request });
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-  // Instanciamos el cliente Supabase en server-side
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-        setAll(cookiesToSet) {
-          // Solo seteamos cookies en la response, no en request
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          });
+          response.cookies.set({
+            name,
+            value: "",
+            ...options,
+          });
         },
       },
     }
   );
 
-  // Obtenemos el usuario actual
+  // Obtener usuario
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const url = request.nextUrl.clone();
-  const pathname = url.pathname;
+  const pathname = request.nextUrl.pathname;
 
-  console.log(`Middleware - Path: ${pathname}, User: ${user?.email || "none"}`);
-
-  // Definimos rutas protegidas y auth
-  const protectedPaths = [
-    "/dashboard",
-    "/products",
-    "/sales",
-    "/inventory",
-    "/reports",
-  ];
+  // Rutas protegidas y de autenticación
+  const protectedPaths = ["/dashboard", "/products", "/sales", "/inventory", "/reports"];
   const authPaths = ["/login", "/signup", "/forgot-password"];
 
-  const isProtectedPath = protectedPaths.some((path) =>
-    pathname.startsWith(path)
-  );
+  const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
   const isAuthPath = authPaths.some((path) => pathname.startsWith(path));
 
-  // Redirecciones según el estado de sesión
+  // Redireccionamiento según autenticación
   if (isProtectedPath && !user) {
+    const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   if (isAuthPath && user) {
+    const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
   if (pathname === "/") {
+    const url = request.nextUrl.clone();
     url.pathname = user ? "/dashboard" : "/login";
     return NextResponse.redirect(url);
   }
 
-  // Retornamos la respuesta con cookies ya seteadas
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {
