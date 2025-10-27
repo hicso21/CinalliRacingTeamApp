@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
 import "./globals.css";
 import { StorageProvider } from "@/context/storage-context";
+import Layout from "@/components/layout/layout";
 
 export const metadata: Metadata = {
   title: "Cinalli Racing Team - Lubricentro",
@@ -22,7 +23,9 @@ export default function RootLayout({
     <html lang="es">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <StorageProvider>
-          <Suspense fallback={null}>{children}</Suspense>
+          <Suspense fallback={null}>
+            <Layout>{children}</Layout>
+          </Suspense>
           <Analytics />
         </StorageProvider>
       </body>

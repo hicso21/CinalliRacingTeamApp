@@ -1,8 +1,9 @@
+'use client'
 import React, { useEffect } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 
-export default function layout({
+export default function Layout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -19,7 +20,7 @@ export default function layout({
         redirect("/login");
       }
     };
-    
+
     verifyAuth();
   });
 
