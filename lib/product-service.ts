@@ -1,70 +1,66 @@
-import { demoProducts } from "./demo-data"
-import { createClient } from './supabase/client'
-import type { Product, ProductStats, Sale } from "./types"
+import { demoProducts } from "./demo-data";
+import { createClient } from "./supabase/client";
+import type {
+  Product,
+  ProductStats,
+  Sale,
+  SaleInsert,
+  ProductInsert,
+  SaleUpdate,
+  ProductUpdate,
+} from "./types";
 
-// Types - mueve estos a un archivo types.ts separado si no existen
-export type ProductInsert = Omit<Product, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string
-  created_at?: string
-  updated_at?: string
-  description: string // Make description required in insert operations
-}
+export const isDemoMode =
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export type SaleInsert = Omit<Sale, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string
-  created_at?: string
-  updated_at?: string
-}
-
-export type ProductUpdate = Partial<Omit<Product, 'id' | 'created_at'>>
-export type SaleUpdate = Partial<Omit<Sale, 'id' | 'created_at'>>
-
-// Check if we're in demo mode (if env vars are missing)
-export const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-/**
- * Servicio de productos para Cinalli Racing Team
- * Maneja todas las operaciones CRUD con Supabase o datos demo
- * Incluye verificación de autenticación robusta
- */
 export class ProductService {
   private static getSupabase() {
-    return createClient()
+    return createClient();
   }
 
   /**
    * Verificar autenticación antes de operaciones críticas
    */
-  private static async verifyAuth(): Promise<{ user: any | null; error: unknown }> {
+  private static async verifyAuth(): Promise<{
+    user: any | null;
+    error: unknown;
+  }> {
     try {
-      const supabase = this.getSupabase()
+      const supabase = this.getSupabase();
       const {
         data: { user },
         error: authError,
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getUser();
 
       if (authError) {
-        console.error("Authentication error:", authError)
-        return { user: null, error: authError }
+        console.error("Authentication error:", authError);
+        return { user: null, error: authError };
       }
 
       if (!user) {
-        console.error("User not authenticated")
-        return { user: null, error: new Error("Debes iniciar sesión para realizar esta operación") }
+        console.error("User not authenticated");
+        return {
+          user: null,
+          error: new Error("Debes iniciar sesión para realizar esta operación"),
+        };
       }
 
-      console.log("Authenticated user:", user.email, user.id)
-      return { user, error: null }
+      console.log("Authenticated user:", user.email, user.id);
+      return { user, error: null };
     } catch (error) {
-      console.error("Auth verification error:", error)
-      return { user: null, error }
+      console.error("Auth verification error:", error);
+      return { user: null, error };
     }
   }
 
   /**
    * GET - Obtener todos los productos
    */
-  static async getAllProducts(): Promise<{ data: Product[] | null; error: unknown }> {
+  static async getAllProducts(): Promise<{
+    data: Product[] | null;
+    error: unknown;
+  }> {
     if (isDemoMode) {
       return {
         data: demoProducts.map((p) => ({
@@ -75,40 +71,45 @@ export class ProductService {
           updated_at: p.updated_at ?? new Date().toISOString(),
         })),
         error: null,
-      }
+      };
     }
 
-    const supabase = this.getSupabase()
+    const supabase = this.getSupabase();
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
     if (!user) {
-      console.warn("Usuario no autenticado para obtener productos")
+      console.warn("Usuario no autenticado para obtener productos");
     }
 
     try {
-      const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error obteniendo productos:", error)
-        return { data: null, error }
+        console.error("Error obteniendo productos:", error);
+        return { data: null, error };
       }
 
-      return { data, error: null }
+      return { data, error: null };
     } catch (error) {
-      console.error("Error en getAllProducts:", error)
-      return { data: null, error }
+      console.error("Error en getAllProducts:", error);
+      return { data: null, error };
     }
   }
 
   /**
    * GET - Obtener producto por ID
    */
-  static async getProductById(id: string): Promise<{ data: Product | null; error: unknown }> {
+  static async getProductById(
+    id: string
+  ): Promise<{ data: Product | null; error: unknown }> {
     if (isDemoMode) {
-      const product = demoProducts.find((p) => p.id === id) || null
+      const product = demoProducts.find((p) => p.id === id) || null;
       if (!product) {
-        return { data: null, error: null }
+        return { data: null, error: null };
       }
       const safeProduct: Product = {
         id: product.id ?? "",
@@ -124,34 +125,40 @@ export class ProductService {
         supplier: product.supplier ?? "",
         created_at: product.created_at ?? new Date().toISOString(),
         updated_at: product.updated_at ?? new Date().toISOString(),
-      }
-      return { data: safeProduct, error: null }
+      };
+      return { data: safeProduct, error: null };
     }
 
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("products").select("*").eq("id", id).single()
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single();
 
       if (error) {
-        console.error("Error obteniendo producto por ID:", error)
-        return { data: null, error }
+        console.error("Error obteniendo producto por ID:", error);
+        return { data: null, error };
       }
 
-      return { data, error: null }
+      return { data, error: null };
     } catch (error) {
-      console.error("Error en getProductById:", error)
-      return { data: null, error }
+      console.error("Error en getProductById:", error);
+      return { data: null, error };
     }
   }
 
   /**
    * GET - Buscar producto por código de barras
    */
-  static async getProductByBarcode(barcode: string): Promise<{ data: Product | null; error: unknown }> {
+  static async getProductByBarcode(
+    barcode: string
+  ): Promise<{ data: Product | null; error: unknown }> {
     if (isDemoMode) {
-      const product = demoProducts.find((p) => p.barcode === barcode) || null
+      const product = demoProducts.find((p) => p.barcode === barcode) || null;
       if (!product) {
-        return { data: null, error: null }
+        return { data: null, error: null };
       }
       const safeProduct: Product = {
         id: product.id ?? "",
@@ -167,38 +174,45 @@ export class ProductService {
         supplier: product.supplier ?? "",
         created_at: product.created_at ?? new Date().toISOString(),
         updated_at: product.updated_at ?? new Date().toISOString(),
-      }
-      return { data: safeProduct, error: null }
+      };
+      return { data: safeProduct, error: null };
     }
 
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("products").select("*").eq("barcode", barcode).single()
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("barcode", barcode)
+        .single();
 
       if (error && error.code !== "PGRST116") {
-        console.error("Error buscando producto por código de barras:", error)
-        return { data: null, error }
+        console.error("Error buscando producto por código de barras:", error);
+        return { data: null, error };
       }
 
-      return { data: data || null, error: null }
+      return { data: data || null, error: null };
     } catch (error) {
-      console.error("Error en getProductByBarcode:", error)
-      return { data: null, error }
+      console.error("Error en getProductByBarcode:", error);
+      return { data: null, error };
     }
   }
 
   /**
    * POST - Crear nuevo producto con verificación de autenticación
    */
-  static async createProduct(product: ProductInsert): Promise<{ data: Product | null; error: unknown }> {
-
+  static async createProduct(
+    product: ProductInsert
+  ): Promise<{ data: Product | null; error: unknown }> {
     if (isDemoMode) {
-      const existingProduct = demoProducts.find((p) => p.barcode === product.barcode)
+      const existingProduct = demoProducts.find(
+        (p) => p.barcode === product.barcode
+      );
       if (existingProduct) {
         return {
           data: null,
           error: { message: "Ya existe un producto con este código de barras" },
-        }
+        };
       }
 
       const newProduct: Product = {
@@ -215,37 +229,41 @@ export class ProductService {
         supplier: product.supplier ?? "",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+      };
 
-      console.log("✅ Producto creado en modo demo:", newProduct.name)
-      return { data: newProduct, error: null }
+      console.log("✅ Producto creado en modo demo:", newProduct.name);
+      return { data: newProduct, error: null };
     }
 
     try {
-      const { user, error: authError } = await this.verifyAuth()
+      const { user, error: authError } = await this.verifyAuth();
       if (authError || !user) {
-        return { data: null, error: authError }
+        return { data: null, error: authError };
       }
 
-      const { data: existingProduct } = await this.getProductByBarcode(product.barcode)
+      const { data: existingProduct } = await this.getProductByBarcode(
+        product.barcode
+      );
       if (existingProduct) {
         return {
           data: null,
           error: { message: "Ya existe un producto con este código de barras" },
-        }
+        };
       }
 
       // Clean the product data and ensure description is a string
       const cleanProduct: Partial<ProductInsert> = Object.fromEntries(
-        Object.entries(product).filter(([_, value]) => value !== undefined && value !== null && value !== ""),
-      )
+        Object.entries(product).filter(
+          ([_, value]) => value !== undefined && value !== null && value !== ""
+        )
+      );
 
       // Ensure description is always a string, never undefined
       if (cleanProduct.description === undefined) {
-        cleanProduct.description = ""
+        cleanProduct.description = "";
       }
 
-      const supabase = this.getSupabase()
+      const supabase = this.getSupabase();
       const { data, error } = await supabase
         .from("products")
         .insert([
@@ -257,33 +275,36 @@ export class ProductService {
           },
         ])
         .select()
-        .single()
+        .single();
 
       if (error) {
-        console.error("Error creando producto:", error)
-        return { data: null, error }
+        console.error("Error creando producto:", error);
+        return { data: null, error };
       }
 
-      console.log("✅ Producto creado exitosamente:", data.name)
-      return { data, error: null }
+      console.log("✅ Producto creado exitosamente:", data.name);
+      return { data, error: null };
     } catch (error) {
-      console.error("Error en createProduct:", error)
-      return { data: null, error }
+      console.error("Error en createProduct:", error);
+      return { data: null, error };
     }
   }
 
   /**
    * PUT - Actualizar producto existente
    */
-  static async updateProduct(id: string, updates: ProductUpdate): Promise<{ data: Product | null; error: unknown }> {
-    console.log("=== UPDATE PRODUCT DEBUG ===")
-    console.log("Product ID:", id)
-    console.log("Updates:", updates)
+  static async updateProduct(
+    id: string,
+    updates: ProductUpdate
+  ): Promise<{ data: Product | null; error: unknown }> {
+    console.log("=== UPDATE PRODUCT DEBUG ===");
+    console.log("Product ID:", id);
+    console.log("Updates:", updates);
 
     if (isDemoMode) {
-      const productIndex = demoProducts.findIndex((p) => p.id === id)
+      const productIndex = demoProducts.findIndex((p) => p.id === id);
       if (productIndex === -1) {
-        return { data: null, error: { message: "Producto no encontrado" } }
+        return { data: null, error: { message: "Producto no encontrado" } };
       }
 
       const updatedProduct: Product = {
@@ -295,53 +316,65 @@ export class ProductService {
         price: updates.price ?? demoProducts[productIndex].price ?? 0,
         cost: updates.cost ?? demoProducts[productIndex].cost ?? 0,
         stock: updates.stock ?? demoProducts[productIndex].stock ?? 0,
-        min_stock: updates.min_stock ?? demoProducts[productIndex].min_stock ?? 0,
-        description: updates.description ?? demoProducts[productIndex].description ?? "",
+        min_stock:
+          updates.min_stock ?? demoProducts[productIndex].min_stock ?? 0,
+        description:
+          updates.description ?? demoProducts[productIndex].description ?? "",
         supplier: updates.supplier ?? demoProducts[productIndex].supplier ?? "",
-        created_at: demoProducts[productIndex].created_at ?? new Date().toISOString(),
+        created_at:
+          demoProducts[productIndex].created_at ?? new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+      };
 
-      console.log("✅ Producto actualizado en modo demo:", updatedProduct.name)
-      return { data: updatedProduct, error: null }
+      console.log("✅ Producto actualizado en modo demo:", updatedProduct.name);
+      return { data: updatedProduct, error: null };
     }
 
     try {
-      const { user, error: authError } = await this.verifyAuth()
+      const { user, error: authError } = await this.verifyAuth();
       if (authError || !user) {
-        return { data: null, error: authError }
+        return { data: null, error: authError };
       }
 
-      const supabase = this.getSupabase()
+      const supabase = this.getSupabase();
 
       const { data: existingProduct, error: fetchError } = await supabase
         .from("products")
         .select("*")
         .eq("id", id)
-        .single()
+        .single();
 
       if (fetchError) {
-        console.error("Error fetching product:", fetchError)
-        return { data: null, error: fetchError }
+        console.error("Error fetching product:", fetchError);
+        return { data: null, error: fetchError };
       }
 
       if (!existingProduct) {
-        return { data: null, error: new Error(`Product with ID ${id} not found`) }
+        return {
+          data: null,
+          error: new Error(`Product with ID ${id} not found`),
+        };
       }
 
       if (updates.barcode && updates.barcode !== existingProduct.barcode) {
-        const { data: duplicateProduct } = await this.getProductByBarcode(updates.barcode)
+        const { data: duplicateProduct } = await this.getProductByBarcode(
+          updates.barcode
+        );
         if (duplicateProduct && duplicateProduct.id !== id) {
           return {
             data: null,
-            error: { message: "Ya existe un producto con este código de barras" },
-          }
+            error: {
+              message: "Ya existe un producto con este código de barras",
+            },
+          };
         }
       }
 
       const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([_, value]) => value !== undefined && value !== null),
-      )
+        Object.entries(updates).filter(
+          ([_, value]) => value !== undefined && value !== null
+        )
+      );
 
       const { data: updateData, error: updateError } = await supabase
         .from("products")
@@ -350,83 +383,91 @@ export class ProductService {
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
-        .select()
+        .select();
 
       if (updateError) {
-        console.error("Update failed:", updateError)
-        return { data: null, error: updateError }
+        console.error("Update failed:", updateError);
+        return { data: null, error: updateError };
       }
 
       if (!updateData || updateData.length === 0) {
         return {
           data: null,
           error: new Error("Update failed: No rows returned."),
-        }
+        };
       }
 
-      console.log("✅ Producto actualizado exitosamente:", updateData[0].name)
-      return { data: updateData[0], error: null }
+      console.log("✅ Producto actualizado exitosamente:", updateData[0].name);
+      return { data: updateData[0], error: null };
     } catch (error) {
-      console.error("Error en updateProduct:", error)
-      return { data: null, error }
+      console.error("Error en updateProduct:", error);
+      return { data: null, error };
     }
   }
 
   /**
    * DELETE - Eliminar producto
    */
-  static async deleteProduct(id: string): Promise<{ success: boolean; error: unknown }> {
-    console.log("=== DELETE PRODUCT DEBUG ===")
-    console.log("Product ID to delete:", id)
+  static async deleteProduct(
+    id: string
+  ): Promise<{ success: boolean; error: unknown }> {
+    console.log("=== DELETE PRODUCT DEBUG ===");
+    console.log("Product ID to delete:", id);
 
     if (isDemoMode) {
-      const productExists = demoProducts.some((p) => p.id === id)
+      const productExists = demoProducts.some((p) => p.id === id);
       if (!productExists) {
-        return { success: false, error: { message: "Producto no encontrado" } }
+        return { success: false, error: { message: "Producto no encontrado" } };
       }
 
-      console.log("✅ Producto eliminado en modo demo")
-      return { success: true, error: null }
+      console.log("✅ Producto eliminado en modo demo");
+      return { success: true, error: null };
     }
 
     try {
-      const { user, error: authError } = await this.verifyAuth()
+      const { user, error: authError } = await this.verifyAuth();
       if (authError || !user) {
-        return { success: false, error: authError }
+        return { success: false, error: authError };
       }
 
-      const supabase = this.getSupabase()
+      const supabase = this.getSupabase();
 
       const { data: existingProduct, error: fetchError } = await supabase
         .from("products")
         .select("id, name")
         .eq("id", id)
-        .single()
+        .single();
 
       if (fetchError) {
-        console.error("Product not found:", fetchError)
-        return { success: false, error: new Error(`Producto con ID ${id} no encontrado`) }
+        console.error("Product not found:", fetchError);
+        return {
+          success: false,
+          error: new Error(`Producto con ID ${id} no encontrado`),
+        };
       }
 
-      const { error: deleteError } = await supabase.from("products").delete().eq("id", id)
+      const { error: deleteError } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
 
       if (deleteError) {
-        console.error("Delete error:", deleteError)
-        return { success: false, error: deleteError }
+        console.error("Delete error:", deleteError);
+        return { success: false, error: deleteError };
       }
 
-      console.log("✅ Producto eliminado exitosamente")
-      return { success: true, error: null }
+      console.log("✅ Producto eliminado exitosamente");
+      return { success: true, error: null };
     } catch (error) {
-      console.error("Error en deleteProduct:", error)
-      return { success: false, error }
+      console.error("Error en deleteProduct:", error);
+      return { success: false, error };
     }
   }
 
   /**
- * GET - Obtener estadísticas completas del inventario
- * Incluye análisis de stock, valor, alertas y distribución por categorías
- */
+   * GET - Obtener estadísticas completas del inventario
+   * Incluye análisis de stock, valor, alertas y distribución por categorías
+   */
   static async getInventoryStats(): Promise<{
     data: {
       totalProducts: number;
@@ -461,10 +502,10 @@ export class ProductService {
         urgency: "critical" | "warning" | "attention";
       }>;
       stockDistribution: {
-        healthy: number;        // Stock > min_stock * 2
-        warning: number;        // Stock entre min_stock y min_stock * 2
-        low: number;           // Stock <= min_stock pero > 0
-        outOfStock: number;    // Stock = 0
+        healthy: number; // Stock > min_stock * 2
+        warning: number; // Stock entre min_stock y min_stock * 2
+        low: number; // Stock <= min_stock pero > 0
+        outOfStock: number; // Stock = 0
       };
     } | null;
     error: unknown;
@@ -487,32 +528,32 @@ export class ProductService {
               category: "Aceites y Lubricantes",
               count: 450,
               totalValue: 198750,
-              percentage: 36.5
+              percentage: 36.5,
             },
             {
               category: "Filtros",
               count: 320,
               totalValue: 89600,
-              percentage: 25.9
+              percentage: 25.9,
             },
             {
               category: "Líquidos de Frenos",
               count: 180,
               totalValue: 50400,
-              percentage: 14.6
+              percentage: 14.6,
             },
             {
               category: "Repuestos Motor",
               count: 150,
               totalValue: 67500,
-              percentage: 12.2
+              percentage: 12.2,
             },
             {
               category: "Accesorios",
               count: 134,
               totalValue: 50539,
-              percentage: 10.8
-            }
+              percentage: 10.8,
+            },
           ],
           topValueProducts: [
             {
@@ -521,7 +562,7 @@ export class ProductService {
               brand: "Gates",
               stock: 8,
               price: 25000,
-              totalValue: 200000
+              totalValue: 200000,
             },
             {
               id: "demo_high_2",
@@ -529,7 +570,7 @@ export class ProductService {
               brand: "Mobil 1",
               stock: 15,
               price: 8500,
-              totalValue: 127500
+              totalValue: 127500,
             },
             {
               id: "demo_high_3",
@@ -537,7 +578,7 @@ export class ProductService {
               brand: "Garrett",
               stock: 2,
               price: 45000,
-              totalValue: 90000
+              totalValue: 90000,
             },
             {
               id: "demo_high_4",
@@ -545,7 +586,7 @@ export class ProductService {
               brand: "KW Suspension",
               stock: 1,
               price: 85000,
-              totalValue: 85000
+              totalValue: 85000,
             },
             {
               id: "demo_high_5",
@@ -553,8 +594,8 @@ export class ProductService {
               brand: "APR",
               stock: 3,
               price: 28000,
-              totalValue: 84000
-            }
+              totalValue: 84000,
+            },
           ],
           lowStockAlerts: [
             {
@@ -565,7 +606,7 @@ export class ProductService {
               current_stock: 2,
               min_stock: 10,
               status: "low_stock" as const,
-              urgency: "critical" as const
+              urgency: "critical" as const,
             },
             {
               id: "demo_alert_2",
@@ -575,7 +616,7 @@ export class ProductService {
               current_stock: 0,
               min_stock: 5,
               status: "out_of_stock" as const,
-              urgency: "critical" as const
+              urgency: "critical" as const,
             },
             {
               id: "demo_alert_3",
@@ -585,7 +626,7 @@ export class ProductService {
               current_stock: 5,
               min_stock: 15,
               status: "low_stock" as const,
-              urgency: "warning" as const
+              urgency: "warning" as const,
             },
             {
               id: "demo_alert_4",
@@ -595,7 +636,7 @@ export class ProductService {
               current_stock: 8,
               min_stock: 12,
               status: "low_stock" as const,
-              urgency: "attention" as const
+              urgency: "attention" as const,
             },
             {
               id: "demo_alert_5",
@@ -605,17 +646,17 @@ export class ProductService {
               current_stock: 0,
               min_stock: 8,
               status: "out_of_stock" as const,
-              urgency: "critical" as const
-            }
+              urgency: "critical" as const,
+            },
           ],
           stockDistribution: {
-            healthy: 980,     // 79.4%
-            warning: 201,     // 16.3%
-            low: 28,         // 2.3%
-            outOfStock: 25   // 2.0%
-          }
+            healthy: 980, // 79.4%
+            warning: 201, // 16.3%
+            low: 28, // 2.3%
+            outOfStock: 25, // 2.0%
+          },
         },
-        error: null
+        error: null,
       };
     }
 
@@ -644,23 +685,33 @@ export class ProductService {
               healthy: 0,
               warning: 0,
               low: 0,
-              outOfStock: 0
-            }
+              outOfStock: 0,
+            },
           },
-          error: null
+          error: null,
         };
       }
 
       // Cálculos básicos
       const totalProducts = products.length;
-      const totalInventoryValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
-      const totalCostValue = products.reduce((sum, product) => sum + (product.cost * product.stock), 0);
+      const totalInventoryValue = products.reduce(
+        (sum, product) => sum + product.price * product.stock,
+        0
+      );
+      const totalCostValue = products.reduce(
+        (sum, product) => sum + product.cost * product.stock,
+        0
+      );
       const potentialProfit = totalInventoryValue - totalCostValue;
-      const averageStockLevel = products.reduce((sum, product) => sum + product.stock, 0) / totalProducts;
+      const averageStockLevel =
+        products.reduce((sum, product) => sum + product.stock, 0) /
+        totalProducts;
 
       // Contar alertas de stock
-      const lowStockProducts = products.filter(p => p.stock <= p.min_stock && p.stock > 0);
-      const outOfStockProducts = products.filter(p => p.stock === 0);
+      const lowStockProducts = products.filter(
+        (p) => p.stock <= p.min_stock && p.stock > 0
+      );
+      const outOfStockProducts = products.filter((p) => p.stock === 0);
 
       // Distribución por categorías
       const categoryMap = products.reduce((acc, product) => {
@@ -668,7 +719,7 @@ export class ProductService {
         if (!acc[category]) {
           acc[category] = {
             count: 0,
-            totalValue: 0
+            totalValue: 0,
           };
         }
         acc[category].count++;
@@ -681,36 +732,36 @@ export class ProductService {
           category,
           count: stats.count,
           totalValue: stats.totalValue,
-          percentage: Math.round((stats.count / totalProducts) * 1000) / 10 // 1 decimal
+          percentage: Math.round((stats.count / totalProducts) * 1000) / 10, // 1 decimal
         }))
         .sort((a, b) => b.count - a.count);
 
       // Top productos por valor total
       const topValueProducts = products
-        .map(product => ({
-          id: product.id || '', // Usar string vacío como fallback
+        .map((product) => ({
+          id: product.id || "", // Usar string vacío como fallback
           name: product.name,
           brand: product.brand,
           stock: product.stock,
           price: product.price,
-          totalValue: product.price * product.stock
+          totalValue: product.price * product.stock,
         }))
         .sort((a, b) => b.totalValue - a.totalValue)
         .slice(0, 10);
 
       // Alertas de stock bajo con niveles de urgencia
       const lowStockAlerts = [
-        ...outOfStockProducts.map(product => ({
-          id: product.id || '', // Agregar fallback
+        ...outOfStockProducts.map((product) => ({
+          id: product.id || "", // Agregar fallback
           name: product.name,
           brand: product.brand,
           barcode: product.barcode,
           current_stock: product.stock,
           min_stock: product.min_stock,
           status: "out_of_stock" as const,
-          urgency: "critical" as const
+          urgency: "critical" as const,
         })),
-        ...lowStockProducts.map(product => {
+        ...lowStockProducts.map((product) => {
           const stockPercentage = product.stock / product.min_stock;
           let urgency: "critical" | "warning" | "attention";
 
@@ -719,16 +770,16 @@ export class ProductService {
           else urgency = "attention";
 
           return {
-            id: product.id || '', // Agregar fallback
+            id: product.id || "", // Agregar fallback
             name: product.name,
             brand: product.brand,
             barcode: product.barcode,
             current_stock: product.stock,
             min_stock: product.min_stock,
             status: "low_stock" as const,
-            urgency
+            urgency,
           };
-        })
+        }),
       ].sort((a, b) => {
         // Ordenar por urgencia: critical, warning, attention
         const urgencyOrder = { critical: 0, warning: 1, attention: 2 };
@@ -736,26 +787,29 @@ export class ProductService {
       });
 
       // Distribución de niveles de stock
-      const stockDistribution = products.reduce((acc, product) => {
-        const stockRatio = product.stock / (product.min_stock || 1);
+      const stockDistribution = products.reduce(
+        (acc, product) => {
+          const stockRatio = product.stock / (product.min_stock || 1);
 
-        if (product.stock === 0) {
-          acc.outOfStock++;
-        } else if (product.stock <= product.min_stock) {
-          acc.low++;
-        } else if (stockRatio <= 2) {
-          acc.warning++;
-        } else {
-          acc.healthy++;
+          if (product.stock === 0) {
+            acc.outOfStock++;
+          } else if (product.stock <= product.min_stock) {
+            acc.low++;
+          } else if (stockRatio <= 2) {
+            acc.warning++;
+          } else {
+            acc.healthy++;
+          }
+
+          return acc;
+        },
+        {
+          healthy: 0,
+          warning: 0,
+          low: 0,
+          outOfStock: 0,
         }
-
-        return acc;
-      }, {
-        healthy: 0,
-        warning: 0,
-        low: 0,
-        outOfStock: 0
-      });
+      );
 
       const inventoryStats = {
         totalProducts,
@@ -768,17 +822,16 @@ export class ProductService {
         categoryDistribution,
         topValueProducts,
         lowStockAlerts,
-        stockDistribution
+        stockDistribution,
       };
 
       console.log("✅ Estadísticas de inventario calculadas:", {
         totalProducts: inventoryStats.totalProducts,
         totalValue: inventoryStats.totalInventoryValue,
-        alerts: inventoryStats.lowStockCount + inventoryStats.outOfStockCount
+        alerts: inventoryStats.lowStockCount + inventoryStats.outOfStockCount,
       });
 
       return { data: inventoryStats, error: null };
-
     } catch (error) {
       console.error("Error en getInventoryStats:", error);
       return { data: null, error };
@@ -786,9 +839,12 @@ export class ProductService {
   }
 
   /**
- * Función auxiliar para verificar la integridad del stock después de una venta
- */
-  static async verifyStockIntegrity(productId: string, expectedStock: number): Promise<boolean> {
+   * Función auxiliar para verificar la integridad del stock después de una venta
+   */
+  static async verifyStockIntegrity(
+    productId: string,
+    expectedStock: number
+  ): Promise<boolean> {
     try {
       const { data: product, error } = await this.getProductById(productId);
 
@@ -803,7 +859,7 @@ export class ProductService {
         console.warn("Inconsistencia detectada en stock:", {
           productId,
           expectedStock,
-          actualStock: product.stock
+          actualStock: product.stock,
         });
       }
 
@@ -838,7 +894,7 @@ export class ProductService {
         sale_date: item.sale_date || new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        total: item.final_amount
+        total: item.final_amount,
       }));
 
       console.log("✅ Venta múltiple creada en modo demo");
@@ -857,19 +913,21 @@ export class ProductService {
       // 2. Validar todos los productos y stock antes de proceder
       const productValidations = await Promise.all(
         saleItems.map(async (item) => {
-          const { data: product, error } = await this.getProductById(item.product_id);
+          const { data: product, error } = await this.getProductById(
+            item.product_id
+          );
 
           if (error || !product) {
             return {
               valid: false,
-              error: `Producto ${item.product_id} no encontrado`
+              error: `Producto ${item.product_id} no encontrado`,
             };
           }
 
           if (product.stock < item.quantity) {
             return {
               valid: false,
-              error: `Stock insuficiente para "${product.name}". Disponible: ${product.stock}, Requerido: ${item.quantity}`
+              error: `Stock insuficiente para "${product.name}". Disponible: ${product.stock}, Requerido: ${item.quantity}`,
             };
           }
 
@@ -878,7 +936,7 @@ export class ProductService {
       );
 
       // Verificar si todas las validaciones pasaron
-      const failedValidation = productValidations.find(v => !v.valid);
+      const failedValidation = productValidations.find((v) => !v.valid);
       if (failedValidation) {
         return { data: null, error: { message: failedValidation.error } };
       }
@@ -889,14 +947,17 @@ export class ProductService {
 
       const salesForInsert = saleItems.map((item, index) => ({
         ...Object.fromEntries(
-          Object.entries(item).filter(([_, value]) => value !== undefined && value !== null && value !== "")
+          Object.entries(item).filter(
+            ([_, value]) =>
+              value !== undefined && value !== null && value !== ""
+          )
         ),
         id: crypto.randomUUID(),
         sale_number: bulkSaleNumber,
         sale_date: saleDate,
         created_at: saleDate,
         updated_at: saleDate,
-        ...customerInfo
+        ...customerInfo,
       }));
 
       // 4. Insertar todas las ventas
@@ -922,12 +983,15 @@ export class ProductService {
             .from("products")
             .update({
               stock: newStock,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq("id", item.product_id);
 
           if (updateError) {
-            console.error(`Error actualizando stock para producto ${item.product_id}:`, updateError);
+            console.error(
+              `Error actualizando stock para producto ${item.product_id}:`,
+              updateError
+            );
             return { error: updateError, productId: item.product_id };
           }
 
@@ -936,29 +1000,33 @@ export class ProductService {
       );
 
       // Verificar si hubo errores en las actualizaciones de stock
-      const stockErrors = stockUpdates.filter(update => update?.error);
+      const stockErrors = stockUpdates.filter((update) => update?.error);
       if (stockErrors.length > 0) {
         console.error("Errores en actualización de stock:", stockErrors);
 
         // En un escenario real, aquí deberías revertir las ventas creadas
         // Por simplicidad, solo loggeamos el error
-        console.warn("ADVERTENCIA: Algunas actualizaciones de stock fallaron. Se requiere intervención manual.");
+        console.warn(
+          "ADVERTENCIA: Algunas actualizaciones de stock fallaron. Se requiere intervención manual."
+        );
       }
 
       // 6. Preparar datos de respuesta
-      const finalSalesData: Sale[] = insertedSales.map(sale => ({
+      const finalSalesData: Sale[] = insertedSales.map((sale) => ({
         ...sale,
-        total: sale.final_amount
+        total: sale.final_amount,
       }));
 
       console.log("✅ Venta múltiple completada:", {
         saleNumber: bulkSaleNumber,
         itemsCount: finalSalesData.length,
-        totalAmount: finalSalesData.reduce((sum, sale) => sum + sale.final_amount, 0)
+        totalAmount: finalSalesData.reduce(
+          (sum, sale) => sum + sale.final_amount,
+          0
+        ),
       });
 
       return { data: finalSalesData, error: null };
-
     } catch (error) {
       console.error("Error general en createBulkSale:", error);
       return { data: null, error };
@@ -968,8 +1036,8 @@ export class ProductService {
   // ... resto de los métodos siguen el mismo patrón
 
   /**
- * SALES CRUD OPERATIONS
- */
+   * SALES CRUD OPERATIONS
+   */
 
   /**
    * GET - Obtener todas las ventas
@@ -994,7 +1062,7 @@ export class ProductService {
           sale_date: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          total: undefined
+          total: undefined,
         },
         {
           id: "sale_demo_2",
@@ -1012,7 +1080,7 @@ export class ProductService {
           sale_date: new Date(Date.now() - 86400000).toISOString(), // Ayer
           created_at: new Date(Date.now() - 86400000).toISOString(),
           updated_at: new Date(Date.now() - 86400000).toISOString(),
-          total: undefined
+          total: undefined,
         },
       ];
 
@@ -1046,12 +1114,12 @@ export class ProductService {
     }
   }
 
-
-
   /**
    * GET - Obtener venta por ID
    */
-  static async getSaleById(id: string): Promise<{ data: Sale | null; error: unknown }> {
+  static async getSaleById(
+    id: string
+  ): Promise<{ data: Sale | null; error: unknown }> {
     if (isDemoMode) {
       // En modo demo, buscar en datos simulados
       const demoSale: Sale = {
@@ -1069,7 +1137,7 @@ export class ProductService {
         sale_date: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        total: undefined
+        total: undefined,
       };
 
       return { data: demoSale, error: null };
@@ -1120,7 +1188,7 @@ export class ProductService {
           sale_date: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          total: undefined
+          total: undefined,
         },
       ];
 
@@ -1149,9 +1217,11 @@ export class ProductService {
   }
 
   /**
- * POST - Crear nueva venta con verificación de autenticación
- */
-  static async createSale(sale: SaleInsert): Promise<{ data: Sale | null; error: unknown }> {
+   * POST - Crear nueva venta con verificación de autenticación
+   */
+  static async createSale(
+    sale: SaleInsert
+  ): Promise<{ data: Sale | null; error: unknown }> {
     console.log("=== CREATE SALE DEBUG ===");
     console.log("Sale data:", sale);
 
@@ -1174,7 +1244,7 @@ export class ProductService {
         sale_date: sale.sale_date || new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        total: sale.final_amount
+        total: sale.final_amount,
       };
 
       console.log("✅ Venta creada en modo demo:", newSale.sale_number);
@@ -1193,7 +1263,9 @@ export class ProductService {
       }
 
       // 2. Verificar que el producto existe y obtener datos actuales
-      const { data: product, error: productError } = await this.getProductById(sale.product_id);
+      const { data: product, error: productError } = await this.getProductById(
+        sale.product_id
+      );
       if (productError) {
         console.error("Error fetching product:", productError);
         return { data: null, error: productError };
@@ -1211,14 +1283,16 @@ export class ProductService {
         return {
           data: null,
           error: {
-            message: `Stock insuficiente para "${product.name}". Disponible: ${product.stock}, Requerido: ${sale.quantity}`
+            message: `Stock insuficiente para "${product.name}". Disponible: ${product.stock}, Requerido: ${sale.quantity}`,
           },
         };
       }
 
       // 4. Preparar datos limpios para la venta
       const cleanSale = Object.fromEntries(
-        Object.entries(sale).filter(([_, value]) => value !== undefined && value !== null && value !== "")
+        Object.entries(sale).filter(
+          ([_, value]) => value !== undefined && value !== null && value !== ""
+        )
       );
 
       const saleId = crypto.randomUUID();
@@ -1234,7 +1308,7 @@ export class ProductService {
         productId: sale.product_id,
         currentStock: product.stock,
         quantity: sale.quantity,
-        newStock
+        newStock,
       });
 
       // Paso 1: Crear la venta
@@ -1266,7 +1340,7 @@ export class ProductService {
         .from("products")
         .update({
           stock: newStock,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq("id", sale.product_id)
         .select()
@@ -1279,32 +1353,35 @@ export class ProductService {
         console.log("🔄 Revirtiendo venta debido a error en stock...");
         await supabase.from("sales").delete().eq("id", saleId);
 
-        throw new Error(`Error actualizando inventario: ${stockUpdateError.message}`);
+        throw new Error(
+          `Error actualizando inventario: ${stockUpdateError.message}`
+        );
       }
 
       stockUpdated = true;
       console.log("✅ Stock actualizado exitosamente:", {
         product: updatedProduct?.name || product.name,
         previousStock: product.stock,
-        newStock: updatedProduct?.stock || newStock
+        newStock: updatedProduct?.stock || newStock,
       });
 
       // Agregar el campo total para compatibilidad con el frontend
       const finalSaleData: Sale = {
         ...(saleData as Sale),
-        total: saleData?.final_amount
+        total: saleData?.final_amount,
       };
 
       console.log("✅ Transacción completada exitosamente");
       return { data: finalSaleData, error: null };
-
     } catch (transactionError) {
       console.error("Error en transacción:", transactionError);
 
       // Limpiar en caso de error parcial
       if (saleData && !stockUpdated) {
         try {
-          console.log("🔄 Limpiando venta creada debido a error en transacción...");
+          console.log(
+            "🔄 Limpiando venta creada debido a error en transacción..."
+          );
           await supabase.from("sales").delete().eq("id", saleData.id);
         } catch (cleanupError) {
           console.error("Error limpiando venta:", cleanupError);
@@ -1315,11 +1392,13 @@ export class ProductService {
     }
   }
 
-
   /**
    * PUT - Actualizar venta existente
    */
-  static async updateSale(id: string, updates: SaleUpdate): Promise<{ data: Sale | null; error: unknown }> {
+  static async updateSale(
+    id: string,
+    updates: SaleUpdate
+  ): Promise<{ data: Sale | null; error: unknown }> {
     console.log("=== UPDATE SALE DEBUG ===");
     console.log("Sale ID:", id);
     console.log("Updates:", updates);
@@ -1343,10 +1422,13 @@ export class ProductService {
         sale_date: updates.sale_date || new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        total: undefined
+        total: undefined,
       };
 
-      console.log("✅ Venta actualizada en modo demo:", updatedSale.sale_number);
+      console.log(
+        "✅ Venta actualizada en modo demo:",
+        updatedSale.sale_number
+      );
       return { data: updatedSale, error: null };
     }
 
@@ -1371,12 +1453,17 @@ export class ProductService {
       }
 
       if (!existingSale) {
-        return { data: null, error: new Error(`Venta con ID ${id} no encontrada`) };
+        return {
+          data: null,
+          error: new Error(`Venta con ID ${id} no encontrada`),
+        };
       }
 
       // Si se cambia la cantidad, manejar el stock
       if (updates.quantity && updates.quantity !== existingSale.quantity) {
-        const { data: product } = await this.getProductById(existingSale.product_id);
+        const { data: product } = await this.getProductById(
+          existingSale.product_id
+        );
         if (product) {
           const stockDifference = existingSale.quantity - updates.quantity;
           const newStock = product.stock + stockDifference;
@@ -1388,12 +1475,16 @@ export class ProductService {
             };
           }
 
-          await this.updateProduct(existingSale.product_id, { stock: newStock });
+          await this.updateProduct(existingSale.product_id, {
+            stock: newStock,
+          });
         }
       }
 
       const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([_, value]) => value !== undefined && value !== null)
+        Object.entries(updates).filter(
+          ([_, value]) => value !== undefined && value !== null
+        )
       );
 
       const { data: updateData, error: updateError } = await supabase
@@ -1417,7 +1508,10 @@ export class ProductService {
         };
       }
 
-      console.log("✅ Venta actualizada exitosamente:", updateData[0].sale_number);
+      console.log(
+        "✅ Venta actualizada exitosamente:",
+        updateData[0].sale_number
+      );
       return { data: updateData[0], error: null };
     } catch (error) {
       console.error("Error en updateSale:", error);
@@ -1428,7 +1522,9 @@ export class ProductService {
   /**
    * DELETE - Eliminar venta (y restaurar stock)
    */
-  static async deleteSale(id: string): Promise<{ success: boolean; error: unknown }> {
+  static async deleteSale(
+    id: string
+  ): Promise<{ success: boolean; error: unknown }> {
     console.log("=== DELETE SALE DEBUG ===");
     console.log("Sale ID to delete:", id);
 
@@ -1454,14 +1550,21 @@ export class ProductService {
 
       if (fetchError) {
         console.error("Sale not found:", fetchError);
-        return { success: false, error: new Error(`Venta con ID ${id} no encontrada`) };
+        return {
+          success: false,
+          error: new Error(`Venta con ID ${id} no encontrada`),
+        };
       }
 
       // Restaurar stock del producto
-      const { data: product } = await this.getProductById(existingSale.product_id);
+      const { data: product } = await this.getProductById(
+        existingSale.product_id
+      );
       if (product) {
         const restoredStock = product.stock + existingSale.quantity;
-        await this.updateProduct(existingSale.product_id, { stock: restoredStock });
+        await this.updateProduct(existingSale.product_id, {
+          stock: restoredStock,
+        });
       }
 
       // Eliminar la venta
@@ -1486,12 +1589,19 @@ export class ProductService {
   /**
    * GET - Obtener estadísticas de ventas
    */
-  static async getSalesStats(dateRange?: { start: string; end: string }): Promise<{
+  static async getSalesStats(dateRange?: {
+    start: string;
+    end: string;
+  }): Promise<{
     data: {
       totalSales: number;
       totalRevenue: number;
       averageTicket: number;
-      topProducts: Array<{ product_name: string; total_quantity: number; total_revenue: number }>;
+      topProducts: Array<{
+        product_name: string;
+        total_quantity: number;
+        total_revenue: number;
+      }>;
     } | null;
     error: unknown;
   }> {
@@ -1502,9 +1612,21 @@ export class ProductService {
           totalRevenue: 234567,
           averageTicket: 5212,
           topProducts: [
-            { product_name: "Aceite Shell Helix 10W-40", total_quantity: 15, total_revenue: 82500 },
-            { product_name: "Filtro de Aceite Mann", total_quantity: 12, total_revenue: 33600 },
-            { product_name: "Líquido de Frenos DOT 4", total_quantity: 8, total_revenue: 22400 },
+            {
+              product_name: "Aceite Shell Helix 10W-40",
+              total_quantity: 15,
+              total_revenue: 82500,
+            },
+            {
+              product_name: "Filtro de Aceite Mann",
+              total_quantity: 12,
+              total_revenue: 33600,
+            },
+            {
+              product_name: "Líquido de Frenos DOT 4",
+              total_quantity: 8,
+              total_revenue: 22400,
+            },
           ],
         },
         error: null,
@@ -1542,7 +1664,10 @@ export class ProductService {
       }
 
       const totalSales = sales.length;
-      const totalRevenue = sales.reduce((sum, sale) => sum + sale.final_amount, 0);
+      const totalRevenue = sales.reduce(
+        (sum, sale) => sum + sale.final_amount,
+        0
+      );
       const averageTicket = totalRevenue / totalSales;
 
       // Agrupar productos por ventas
@@ -1579,16 +1704,27 @@ export class ProductService {
   }
 
   /**
- * GET - Obtener ventas del día actual
- * Útil para dashboard y resúmenes diarios
- */
-  static async getSalesToday(): Promise<{ data: Sale[] | null; error: unknown }> {
+   * GET - Obtener ventas del día actual
+   * Útil para dashboard y resúmenes diarios
+   */
+  static async getSalesToday(): Promise<{
+    data: Sale[] | null;
+    error: unknown;
+  }> {
     console.log("=== GET SALES TODAY DEBUG ===");
 
     // Obtener fecha actual en formato ISO (solo fecha, sin hora)
     const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + 1
+    );
 
     const startDateISO = startOfDay.toISOString();
     const endDateISO = endOfDay.toISOString();
@@ -1596,7 +1732,7 @@ export class ProductService {
     console.log("Buscando ventas del día:", {
       date: today.toLocaleDateString(),
       startOfDay: startDateISO,
-      endOfDay: endDateISO
+      endOfDay: endDateISO,
     });
 
     if (isDemoMode) {
@@ -1604,7 +1740,8 @@ export class ProductService {
       const todaySales: Sale[] = [
         {
           id: "sale_today_1",
-          sale_number: "V-" + today.getDate().toString().padStart(2, '0') + "001",
+          sale_number:
+            "V-" + today.getDate().toString().padStart(2, "0") + "001",
           product_id: "demo_1",
           product_barcode: "7790001234567",
           product_name: "Aceite Shell Helix 10W-40",
@@ -1618,11 +1755,12 @@ export class ProductService {
           sale_date: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          total: undefined
+          total: undefined,
         },
         {
           id: "sale_today_2",
-          sale_number: "V-" + today.getDate().toString().padStart(2, '0') + "002",
+          sale_number:
+            "V-" + today.getDate().toString().padStart(2, "0") + "002",
           product_id: "demo_2",
           product_barcode: "7790001234568",
           product_name: "Filtro de Aceite Mann",
@@ -1636,11 +1774,12 @@ export class ProductService {
           sale_date: new Date(Date.now() - 3600000).toISOString(), // Hace 1 hora
           created_at: new Date(Date.now() - 3600000).toISOString(),
           updated_at: new Date(Date.now() - 3600000).toISOString(),
-          total: undefined
+          total: undefined,
         },
         {
           id: "sale_today_3",
-          sale_number: "V-" + today.getDate().toString().padStart(2, '0') + "003",
+          sale_number:
+            "V-" + today.getDate().toString().padStart(2, "0") + "003",
           product_id: "demo_3",
           product_barcode: "7790001234569",
           product_name: "Líquido de Frenos DOT 4",
@@ -1654,8 +1793,8 @@ export class ProductService {
           sale_date: new Date(Date.now() - 7200000).toISOString(), // Hace 2 horas
           created_at: new Date(Date.now() - 7200000).toISOString(),
           updated_at: new Date(Date.now() - 7200000).toISOString(),
-          total: undefined
-        }
+          total: undefined,
+        },
       ];
 
       console.log("✅ Ventas del día en modo demo:", todaySales.length);
@@ -1667,7 +1806,8 @@ export class ProductService {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) console.warn("Usuario no autenticado para obtener ventas del día")
+    if (!user)
+      console.warn("Usuario no autenticado para obtener ventas del día");
 
     try {
       const { data, error } = await supabase
@@ -1713,13 +1853,18 @@ export class ProductService {
       }
 
       const totalSalesToday = todaySales.length;
-      const revenueToday = todaySales.reduce((sum, sale) => sum + sale.final_amount, 0);
-      const averageTicketToday = totalSalesToday > 0 ? Math.round(revenueToday / totalSalesToday) : 0;
+      const revenueToday = todaySales.reduce(
+        (sum, sale) => sum + sale.final_amount,
+        0
+      );
+      const averageTicketToday =
+        totalSalesToday > 0 ? Math.round(revenueToday / totalSalesToday) : 0;
 
       // Obtener la hora de la última venta
-      const lastSaleTime = todaySales.length > 0 && todaySales[0].sale_date
-        ? todaySales[0].sale_date // Ya están ordenadas por fecha descendente
-        : null;
+      const lastSaleTime =
+        todaySales.length > 0 && todaySales[0].sale_date
+          ? todaySales[0].sale_date // Ya están ordenadas por fecha descendente
+          : null;
 
       const stats = {
         totalSalesToday,
@@ -1761,7 +1906,8 @@ export class ProductService {
 
     try {
       // Obtener ventas de hoy
-      const { data: todaySales, error: todayError } = await this.getSalesToday();
+      const { data: todaySales, error: todayError } =
+        await this.getSalesToday();
       if (todayError) {
         return { data: null, error: todayError };
       }
@@ -1770,13 +1916,22 @@ export class ProductService {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const startOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-      const endOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
-
-      const { data: yesterdaySales, error: yesterdayError } = await this.getSalesByDateRange(
-        startOfYesterday.toISOString(),
-        endOfYesterday.toISOString()
+      const startOfYesterday = new Date(
+        yesterday.getFullYear(),
+        yesterday.getMonth(),
+        yesterday.getDate()
       );
+      const endOfYesterday = new Date(
+        yesterday.getFullYear(),
+        yesterday.getMonth(),
+        yesterday.getDate() + 1
+      );
+
+      const { data: yesterdaySales, error: yesterdayError } =
+        await this.getSalesByDateRange(
+          startOfYesterday.toISOString(),
+          endOfYesterday.toISOString()
+        );
 
       if (yesterdayError) {
         return { data: null, error: yesterdayError };
@@ -1785,22 +1940,34 @@ export class ProductService {
       // Calcular estadísticas
       const todayStats = {
         sales: todaySales?.length || 0,
-        revenue: todaySales?.reduce((sum, sale) => sum + sale.final_amount, 0) || 0,
+        revenue:
+          todaySales?.reduce((sum, sale) => sum + sale.final_amount, 0) || 0,
       };
 
       const yesterdayStats = {
         sales: yesterdaySales?.length || 0,
-        revenue: yesterdaySales?.reduce((sum, sale) => sum + sale.final_amount, 0) || 0,
+        revenue:
+          yesterdaySales?.reduce((sum, sale) => sum + sale.final_amount, 0) ||
+          0,
       };
 
       // Calcular porcentajes de crecimiento
-      const salesGrowth = yesterdayStats.sales > 0
-        ? ((todayStats.sales - yesterdayStats.sales) / yesterdayStats.sales) * 100
-        : todayStats.sales > 0 ? 100 : 0;
+      const salesGrowth =
+        yesterdayStats.sales > 0
+          ? ((todayStats.sales - yesterdayStats.sales) / yesterdayStats.sales) *
+            100
+          : todayStats.sales > 0
+          ? 100
+          : 0;
 
-      const revenueGrowth = yesterdayStats.revenue > 0
-        ? ((todayStats.revenue - yesterdayStats.revenue) / yesterdayStats.revenue) * 100
-        : todayStats.revenue > 0 ? 100 : 0;
+      const revenueGrowth =
+        yesterdayStats.revenue > 0
+          ? ((todayStats.revenue - yesterdayStats.revenue) /
+              yesterdayStats.revenue) *
+            100
+          : todayStats.revenue > 0
+          ? 100
+          : 0;
 
       const comparison = {
         today: todayStats,
@@ -1825,14 +1992,17 @@ export class ProductService {
 
   static async getAllCategories() {
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("categories").select("*").order("name", { ascending: true })
-      console.log('getAllCategories',data)
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name", { ascending: true });
+      console.log("getAllCategories", data);
       if (error) {
         console.error("Error obteniendo las categorías:", error);
         return { data: null, error };
       }
-      return { data, error: null }
+      return { data, error: null };
     } catch (error) {
       console.error("Error en getAllCategories:", error);
       return { data: null, error };
@@ -1841,8 +2011,12 @@ export class ProductService {
 
   static async getCategoryById(id: string) {
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("categories").select("*").eq("id", id).single()
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("id", id)
+        .single();
       if (error) {
         console.error("Error obteniendo la categoría por id:", error);
         return { data: null, error };
@@ -1854,10 +2028,14 @@ export class ProductService {
     }
   }
 
-  static async createCategory(category: { name: string; }) {
+  static async createCategory(category: { name: string }) {
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("categories").insert([category]).select().single()
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("categories")
+        .insert([category])
+        .select()
+        .single();
       if (error) {
         console.error("Error creando la categoría:", error);
         return { data: null, error };
@@ -1869,10 +2047,15 @@ export class ProductService {
     }
   }
 
-  static async updateCategory(id: string, updates: { name?: string; }) {
+  static async updateCategory(id: string, updates: { name?: string }) {
     try {
-      const supabase = this.getSupabase()
-      const { data, error } = await supabase.from("categories").update(updates).eq("id", id).select().single()
+      const supabase = this.getSupabase();
+      const { data, error } = await supabase
+        .from("categories")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) {
         console.error("Error actualizando la categoría:", error);
         return { data: null, error };
@@ -1886,8 +2069,8 @@ export class ProductService {
 
   static async deleteCategory(id: string) {
     try {
-      const supabase = this.getSupabase()
-      const { error } = await supabase.from("categories").delete().eq("id", id)
+      const supabase = this.getSupabase();
+      const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) {
         console.error("Error borrando la categoría:", error);
         return { data: null, error };
