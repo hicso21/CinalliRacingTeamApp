@@ -28,12 +28,13 @@ import {
   WifiOff,
   AlertCircle,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
 } from "lucide-react";
 import { SaleDialog } from "@/components/sales/sale-dialog";
 import { SalesHistory } from "@/components/sales/sales-history";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { generateTicket } from "@/lib/ticket-generator";
 
 interface SaleCompletionData {
   items: Array<{
@@ -42,6 +43,7 @@ interface SaleCompletionData {
     unit_price: number;
   }>;
   total: number;
+  discount?: number;
   customer_name?: string;
   customer_email?: string;
   payment_method?: "cash" | "card" | "transfer" | "other";
@@ -79,6 +81,8 @@ export default function SalesPage() {
   const [isOnline, setIsOnline] = useState(OfflineSync.isOnline());
   const [syncInProgress, setSyncInProgress] = useState(false);
   const [pendingSalesCount, setPendingSalesCount] = useState(0);
+  const [saleNumber, setSaleNumber] = useState(Date.now().toString());
+  const [itemsOnSale, setItemsOnSale] = useState([]);
 
   const { toast } = useToast();
 
@@ -94,12 +98,12 @@ export default function SalesPage() {
       }
     };
 
-    window.addEventListener('online', handleOnlineStatus);
-    window.addEventListener('offline', handleOnlineStatus);
+    window.addEventListener("online", handleOnlineStatus);
+    window.addEventListener("offline", handleOnlineStatus);
 
     return () => {
-      window.removeEventListener('online', handleOnlineStatus);
-      window.removeEventListener('offline', handleOnlineStatus);
+      window.removeEventListener("online", handleOnlineStatus);
+      window.removeEventListener("offline", handleOnlineStatus);
     };
   }, []);
 
@@ -110,11 +114,7 @@ export default function SalesPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        loadProducts(),
-        loadSales(),
-        loadSalesStats()
-      ]);
+      await Promise.all([loadProducts(), loadSales(), loadSalesStats()]);
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
@@ -130,7 +130,8 @@ export default function SalesPage() {
   const loadProducts = async () => {
     try {
       if (isOnline) {
-        const { data: productsData, error } = await ProductService.getAllProducts();
+        const { data: productsData, error } =
+          await ProductService.getAllProducts();
 
         if (error) {
           console.error("Error loading products from server:", error);
@@ -176,7 +177,6 @@ export default function SalesPage() {
 
       const pending = OfflineSync.getPendingSales();
       setPendingSalesCount(pending.length);
-
     } catch (error) {
       console.error("Error in loadSales:", error);
       const { data: mockSales } = await ProductService.getSalesToday();
@@ -188,7 +188,8 @@ export default function SalesPage() {
   const loadSalesStats = async () => {
     try {
       // Obtener estadísticas del día actual
-      const { data: todayStats, error: todayError } = await ProductService.getTodayStats();
+      const { data: todayStats, error: todayError } =
+        await ProductService.getTodayStats();
 
       if (todayError) {
         console.error("Error loading today stats:", todayError);
@@ -222,15 +223,13 @@ export default function SalesPage() {
         );
 
       // Calcular totales
-      const weekTotal = weekSales?.reduce(
-        (sum, sale) => sum + (sale.final_amount || 0),
-        0
-      ) || 0;
+      const weekTotal =
+        weekSales?.reduce((sum, sale) => sum + (sale.final_amount || 0), 0) ||
+        0;
 
-      const monthTotal = monthSales?.reduce(
-        (sum, sale) => sum + (sale.final_amount || 0),
-        0
-      ) || 0;
+      const monthTotal =
+        monthSales?.reduce((sum, sale) => sum + (sale.final_amount || 0), 0) ||
+        0;
 
       setSalesStats({
         todayTotal: todayStats?.revenueToday || 0,
@@ -242,7 +241,6 @@ export default function SalesPage() {
         yesterdayCount: comparison?.yesterday.sales || 0,
         growthPercentage: comparison?.growth.revenuePercentage || 0,
       });
-
     } catch (error) {
       console.error("Error loading sales stats:", error);
     }
@@ -268,7 +266,6 @@ export default function SalesPage() {
     setLoading(true);
 
     try {
-      const saleNumber = `V-${Date.now()}`;
       const saleDate = new Date().toISOString();
 
       for (const item of saleData.items) {
@@ -280,28 +277,56 @@ export default function SalesPage() {
       }
 
       if (isOnline) {
-        await processSaleWithSupabase(saleData, saleNumber, saleDate);
+        await processSaleWithSupabase(saleData, saleDate);
       } else {
-        await processSaleOffline(saleData, saleNumber, saleDate);
+        await processSaleOffline(saleData, saleDate);
       }
 
-      updateLocalState(saleData, saleNumber, saleDate);
+      updateLocalState(saleData, saleDate);
+
+      const ticketSales: Sale[] = saleData.items.map((item) => ({
+        sale_number: "V-" + saleNumber,
+        product_id: item.product.id || "",
+        product_barcode: item.product.barcode,
+        product_name: item.product.name || item.product.description || "",
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_amount: item.quantity * item.unit_price,
+        discount_amount: saleData.discount
+          ? saleData.discount / saleData.items.length
+          : 0, // Distribuir descuento proporcionalmente
+        final_amount:
+          item.quantity * item.unit_price -
+          (saleData.discount ? saleData.discount / saleData.items.length : 0),
+        payment_method: saleData.payment_method || "cash",
+        customer_name: saleData.customer_name,
+        customer_email: saleData.customer_email,
+        notes: saleData.notes,
+        sale_date: saleDate,
+        total: item.quantity * item.unit_price,
+      }));
+
+      generateTicket(ticketSales);
 
       // Recargar estadísticas después de la venta
       await loadSalesStats();
 
       toast({
         title: "Venta registrada",
-        description: `Venta ${saleNumber} - Total: $${saleData.total.toLocaleString()}`,
+        description: `Venta ${
+          "V-" + saleNumber
+        } - Total: $${saleData.total.toLocaleString()}`,
       });
 
       setShowSaleDialog(false);
-
     } catch (error) {
       console.error("Error processing sale:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo procesar la venta",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudo procesar la venta",
         variant: "destructive",
       });
     } finally {
@@ -311,11 +336,10 @@ export default function SalesPage() {
 
   const processSaleWithSupabase = async (
     saleData: SaleCompletionData,
-    saleNumber: string,
     saleDate: string
   ) => {
     if (saleData.items.length > 1) {
-      const saleItems = saleData.items.map(item => ({
+      const saleItems = saleData.items.map((item) => ({
         product_id: item.product.id!,
         product_barcode: item.product.barcode,
         product_name: item.product.name || item.product.description || "",
@@ -329,7 +353,7 @@ export default function SalesPage() {
 
       const { data, error } = await ProductService.createBulkSale(
         saleItems as Sale[],
-        saleNumber,
+        "V-" + saleNumber,
         {
           customer_name: saleData.customer_name,
           customer_email: saleData.customer_email,
@@ -339,14 +363,17 @@ export default function SalesPage() {
       );
 
       if (error instanceof Error) {
-        throw new Error(`Error al registrar venta múltiple: ${error?.message || 'Error desconocido'}`);
+        throw new Error(
+          `Error al registrar venta múltiple: ${
+            error?.message || "Error desconocido"
+          }`
+        );
       }
-
     } else {
       const item = saleData.items[0];
       const saleRecord = {
-        sale_number: saleNumber,
-        product_id: item.product.id || '',
+        sale_number: "V-" + saleNumber,
+        product_id: item.product.id || "",
         product_barcode: item.product.barcode,
         product_name: item.product.name || item.product.description || "",
         quantity: item.quantity,
@@ -361,24 +388,29 @@ export default function SalesPage() {
         sale_date: saleDate,
       };
 
-      const { data, error } = await ProductService.createSale(saleRecord as Sale);
+      const { data, error } = await ProductService.createSale(
+        saleRecord as Sale
+      );
 
       if (error) {
-        throw new Error(`Error al registrar venta: ${(error as any).message || 'Error desconocido'}`);
+        throw new Error(
+          `Error al registrar venta: ${
+            (error as any).message || "Error desconocido"
+          }`
+        );
       }
     }
   };
 
   const processSaleOffline = async (
     saleData: SaleCompletionData,
-    saleNumber: string,
     saleDate: string
   ) => {
     for (const item of saleData.items) {
       const totalAmount = item.quantity * item.unit_price;
       const saleRecord = {
-        sale_number: saleNumber,
-        product_id: item.product.id || '',
+        sale_number: "V-" + saleNumber,
+        product_id: item.product.id || "",
         product_barcode: item.product.barcode,
         product_name: item.product.name || item.product.description || "",
         quantity: item.quantity,
@@ -398,17 +430,17 @@ export default function SalesPage() {
       OfflineSync.savePendingSale(saleRecord);
 
       const newStock = item.product.stock - item.quantity;
-      OfflineSync.updateLocalProductStock(item.product.id || '', newStock);
+      OfflineSync.updateLocalProductStock(item.product.id || "", newStock);
     }
 
     setPendingSalesCount(OfflineSync.getPendingSales().length);
   };
 
-  const updateLocalState = (saleData: SaleCompletionData, saleNumber: string, saleDate: string) => {
+  const updateLocalState = (saleData: SaleCompletionData, saleDate: string) => {
     const newSales: Sale[] = saleData.items.map((item, index) => ({
       id: `temp_${Date.now()}_${index}`,
-      sale_number: saleNumber,
-      product_id: item.product.id || '',
+      sale_number: "V-" + saleNumber,
+      product_id: item.product.id || "",
       product_barcode: item.product.barcode,
       product_name: item.product.name || item.product.description || "",
       quantity: item.quantity,
@@ -430,7 +462,9 @@ export default function SalesPage() {
 
     setProducts((prev) =>
       prev.map((p) => {
-        const saleItem = saleData.items.find((item) => item.product.id === p.id);
+        const saleItem = saleData.items.find(
+          (item) => item.product.id === p.id
+        );
         if (saleItem) {
           return { ...p, stock: p.stock - saleItem.quantity };
         }
@@ -451,11 +485,14 @@ export default function SalesPage() {
         try {
           const { data, error } = await ProductService.createSale(sale);
           if (!error && data) {
-            OfflineSync.removePendingSale(sale.id || '');
+            OfflineSync.removePendingSale(sale.id || "");
             syncedCount++;
           }
         } catch (syncError) {
-          console.error(`Error sincronizando venta ${sale.sale_number}:`, syncError);
+          console.error(
+            `Error sincronizando venta ${sale.sale_number}:`,
+            syncError
+          );
         }
       }
 
@@ -468,7 +505,6 @@ export default function SalesPage() {
         setPendingSalesCount(OfflineSync.getPendingSales().length);
         await loadData();
       }
-
     } catch (error) {
       console.error("Error durante la sincronización:", error);
       toast({
@@ -499,7 +535,7 @@ export default function SalesPage() {
             ) : (
               <WifiOff className="w-4 h-4 text-red-500" />
             )}
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
+            <span>{isOnline ? "Online" : "Offline"}</span>
           </div>
 
           {pendingSalesCount > 0 && (
@@ -520,7 +556,10 @@ export default function SalesPage() {
           )}
 
           <Button
-            onClick={() => setShowSaleDialog(true)}
+            onClick={() => {
+              setShowSaleDialog(true);
+              setSaleNumber(Date.now().toString());
+            }}
             disabled={loading}
             className="racing-shadow cursor-pointer"
           >
@@ -538,7 +577,8 @@ export default function SalesPage() {
         <Alert className="mb-4">
           <WifiOff className="h-4 w-4" />
           <AlertDescription>
-            Estás trabajando offline. Las ventas se guardarán localmente y se sincronizarán cuando recuperes la conexión.
+            Estás trabajando offline. Las ventas se guardarán localmente y se
+            sincronizarán cuando recuperes la conexión.
           </AlertDescription>
         </Alert>
       )}
@@ -557,8 +597,13 @@ export default function SalesPage() {
             <div className="flex items-center text-xs text-muted-foreground mt-1">
               <span>{salesStats.todayCount} transacciones</span>
               {salesStats.growthPercentage !== 0 && (
-                <span className={`ml-2 flex items-center ${salesStats.growthPercentage > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                <span
+                  className={`ml-2 flex items-center ${
+                    salesStats.growthPercentage > 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {salesStats.growthPercentage > 0 ? (
                     <ArrowUpRight className="w-3 h-3" />
                   ) : (
@@ -614,7 +659,7 @@ export default function SalesPage() {
       </div>
 
       {/* Quick Product Search */}
-      <Card className="racing-shadow">
+      {/* <Card className="racing-shadow">
         <CardHeader>
           <CardTitle>Búsqueda Rápida de Productos</CardTitle>
           <CardDescription>
@@ -635,7 +680,10 @@ export default function SalesPage() {
               </div>
             </div>
             <Button
-              onClick={() => setShowSaleDialog(true)}
+              onClick={() => {
+                setShowSaleDialog(true);
+                setSaleNumber(Date.now().toString());
+              }}
               disabled={loading}
               className="racing-shadow cursor-pointer"
             >
@@ -650,9 +698,6 @@ export default function SalesPage() {
                 <div
                   key={product.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => {
-                    setShowSaleDialog(true);
-                  }}
                 >
                   <div className="flex-1">
                     <div className="font-medium text-sm">{product.name}</div>
@@ -673,7 +718,7 @@ export default function SalesPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       <SalesHistory sales={sales} products={products} />
 

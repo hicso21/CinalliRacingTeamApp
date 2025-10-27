@@ -113,7 +113,7 @@ export default function InventoryPage() {
 
         if (data && !error) {
           setProducts(data);
-          
+
           // Load stats
           const statsResult = await ProductService.getInventoryStats();
           if (statsResult.data) {

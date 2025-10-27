@@ -1,48 +1,67 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Receipt, Calendar } from "lucide-react"
-import type { Sale, Product } from "@/lib/types"
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Receipt, Calendar } from "lucide-react";
+import type { Sale, Product } from "@/lib/types";
 
 interface SalesHistoryProps {
-  sales: Sale[]
-  products: Product[]
+  sales: Sale[];
+  products: Product[];
 }
 
 export function SalesHistory({ sales, products }: SalesHistoryProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dateFilter, setDateFilter] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
 
   const getProductName = (productId: string) => {
-    const product = products.find((p) => p.id === productId)
-    return product ? `${product.name} (${product.brand})` : "Producto no encontrado"
-  }
+    const product = products.find((p) => p.id === productId);
+    return product
+      ? `${product.name} (${product.brand})`
+      : "Producto no encontrado";
+  };
 
   const filteredSales = sales.filter((sale) => {
-    const productName = getProductName(sale.product_id).toLowerCase()
-    const matchesSearch = searchQuery === "" || productName.includes(searchQuery.toLowerCase())
+    const productName = getProductName(sale.product_id).toLowerCase();
+    const saleNumber = (sale.sale_number || "").toLowerCase();
+    const matchesSearch =
+      searchQuery === "" ||
+      productName.includes(searchQuery.toLowerCase()) ||
+      saleNumber.includes(searchQuery.toLowerCase());
 
-    const saleDate = new Date(sale.created_at!).toISOString().split("T")[0]
-    const matchesDate = dateFilter === "" || saleDate === dateFilter
+    const saleDate = new Date(sale.created_at!).toISOString().split("T")[0];
+    const matchesDate = dateFilter === "" || saleDate === dateFilter;
 
-    return matchesSearch && matchesDate
-  })
+    return matchesSearch && matchesDate;
+  });
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleString("es-AR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   return (
     <Card className="racing-shadow">
@@ -51,7 +70,9 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
           <Receipt className="w-5 h-5" />
           Historial de Ventas
         </CardTitle>
-        <CardDescription>Registro completo de todas las ventas realizadas</CardDescription>
+        <CardDescription>
+          Registro completo de todas las ventas realizadas
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {/* Filters */}
@@ -70,7 +91,12 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
           <div className="sm:w-48">
             <div className="relative">
               <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="pl-8" />
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="pl-8"
+              />
             </div>
           </div>
           {(searchQuery || dateFilter) && (
@@ -78,8 +104,8 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
               variant="outline"
               className="cursor-pointer"
               onClick={() => {
-                setSearchQuery("")
-                setDateFilter("")
+                setSearchQuery("");
+                setDateFilter("");
               }}
             >
               Limpiar
@@ -98,6 +124,7 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha y Hora</TableHead>
+                  <TableHead>ID de compra</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead className="text-right">Cantidad</TableHead>
                   <TableHead className="text-right">Precio Unit.</TableHead>
@@ -108,16 +135,35 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
               <TableBody>
                 {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell className="font-mono text-sm">{formatDate(sale.created_at!)}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{getProductName(sale.product_id)}</div>
+                    <TableCell className="font-mono text-sm">
+                      {formatDate(sale.created_at!)}
                     </TableCell>
-                    <TableCell className="text-right">{sale.quantity}</TableCell>
-                    <TableCell className="text-right">${sale.unit_price.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-medium">${sale.total?.toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {sale.sale_number}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={sale.id?.startsWith("temp_") ? "outline" : "secondary"}>
-                        {sale.id?.startsWith("temp_") ? "Pendiente sync" : "Completada"}
+                      <div className="font-medium">
+                        {getProductName(sale.product_id)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {sale.quantity}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${sale.unit_price.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${sale.total?.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          sale.id?.startsWith("temp_") ? "outline" : "secondary"
+                        }
+                      >
+                        {sale.id?.startsWith("temp_")
+                          ? "Pendiente sync"
+                          : "Completada"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -133,7 +179,9 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <div className="font-medium">Total Ventas</div>
-                <div className="text-2xl font-bold text-primary">{filteredSales.length}</div>
+                <div className="text-2xl font-bold text-primary">
+                  {filteredSales.length}
+                </div>
               </div>
               <div>
                 <div className="font-medium">Cantidad Total</div>
@@ -144,7 +192,10 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
               <div>
                 <div className="font-medium">Monto Total</div>
                 <div className="text-2xl font-bold text-primary">
-                  ${filteredSales.reduce((sum, sale) => sum + sale.total, 0).toLocaleString()}
+                  $
+                  {filteredSales
+                    .reduce((sum, sale) => sum + sale.final_amount, 0)
+                    .toLocaleString()}
                 </div>
               </div>
               <div>
@@ -152,7 +203,10 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
                 <div className="text-2xl font-bold text-primary">
                   $
                   {Math.round(
-                    filteredSales.reduce((sum, sale) => sum + sale.total, 0) / filteredSales.length,
+                    filteredSales.reduce(
+                      (sum, sale) => sum + sale.final_amount,
+                      0
+                    ) / filteredSales.length
                   ).toLocaleString()}
                 </div>
               </div>
@@ -161,5 +215,5 @@ export function SalesHistory({ sales, products }: SalesHistoryProps) {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

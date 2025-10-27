@@ -199,7 +199,7 @@ export default function DashboardPage() {
                 >
                   <span className="text-sm">{sale.id}</span>
                   <Badge variant="secondary">
-                    ${sale.total.toLocaleString()}
+                    ${sale.total?.toLocaleString()}
                   </Badge>
                 </div>
               ))}
