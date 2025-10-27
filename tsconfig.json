@@ -34,7 +34,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/dashboard/page.tsx",
+    "app/(protected)/dashboard/page.tsx",
     "context/storage.js"
   ],
   "exclude": [
