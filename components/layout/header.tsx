@@ -8,13 +8,12 @@ import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 
 export function Header() {
-  const { isOnline, syncing, pendingItems, lastSync, syncData } =
+  const { isOnline, isHydrated, syncing, pendingItems, lastSync, syncData } =
     useOfflineSync();
   const { isConnected: scannerConnected, isScanning } = useBarcodeScanner();
 
   const handleSync = async () => {
     const success = await syncData();
-    // Toast notification would be handled by the hook or parent component
   };
 
   return (
@@ -56,9 +55,15 @@ export function Header() {
                 : "Sin escáner"}
             </Badge>
 
-            {/* Connection Status */}
+            {/* Connection Status - ✅ FIX AQUÍ */}
             <div className="flex items-center gap-2">
-              {isOnline ? (
+              {!isHydrated ? (
+                // ✅ Placeholder durante hidratación
+                <Badge variant="secondary" className="gap-1">
+                  <Wifi className="w-3 h-3" />
+                  ...
+                </Badge>
+              ) : isOnline ? (
                 <Badge variant="secondary" className="gap-1">
                   <Wifi className="w-3 h-3" />
                   Online

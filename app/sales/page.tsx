@@ -78,7 +78,7 @@ export default function SalesPage() {
     yesterdayCount: 0,
     growthPercentage: 0,
   });
-  const [isOnline, setIsOnline] = useState(OfflineSync.isOnline());
+  const [isOnline, setIsOnline] = useState(true);
   const [syncInProgress, setSyncInProgress] = useState(false);
   const [pendingSalesCount, setPendingSalesCount] = useState(0);
   const [saleNumber, setSaleNumber] = useState(Date.now().toString());
@@ -87,6 +87,8 @@ export default function SalesPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsOnline(OfflineSync.isOnline());
+
     loadData();
 
     const handleOnlineStatus = () => {
