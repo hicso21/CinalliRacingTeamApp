@@ -1587,6 +1587,210 @@ export class ProductService {
   }
 
   /**
+   * DELETE - Eliminar todas las ventas de un sale_number y restaurar stock
+   * Esta función maneja la eliminación de ventas múltiples que comparten el mismo sale_number
+   */
+  static async deleteSaleBySaleNumber(
+    saleNumber: string
+  ): Promise<{ success: boolean; error: unknown }> {
+    console.log("=== DELETE SALE BY SALE_NUMBER DEBUG ===");
+    console.log("Sale Number to delete:", saleNumber);
+
+    if (isDemoMode) {
+      console.log("✅ Venta eliminada en modo demo");
+      return { success: true, error: null };
+    }
+
+    try {
+      const { user, error: authError } = await this.verifyAuth();
+      if (authError || !user) {
+        return { success: false, error: authError };
+      }
+
+      const supabase = this.getSupabase();
+
+      // 1. Obtener todas las ventas con ese sale_number
+      const { data: salesToDelete, error: fetchError } = await supabase
+        .from("sales")
+        .select("*")
+        .eq("sale_number", saleNumber);
+
+      if (fetchError) {
+        console.error("Error fetching sales:", fetchError);
+        return {
+          success: false,
+          error: new Error(
+            `No se encontraron ventas con el número ${saleNumber}`
+          ),
+        };
+      }
+
+      if (!salesToDelete || salesToDelete.length === 0) {
+        return {
+          success: false,
+          error: new Error(
+            `No se encontraron ventas con el número ${saleNumber}`
+          ),
+        };
+      }
+
+      console.log(`Encontradas ${salesToDelete.length} ventas para eliminar`);
+
+      // 2. PRIMERO eliminar las ventas de la base de datos
+      // Esto previene que se ejecuten triggers o se procesen duplicados
+      const { error: deleteError } = await supabase
+        .from("sales")
+        .delete()
+        .eq("sale_number", saleNumber);
+
+      if (deleteError) {
+        console.error("Error eliminando ventas:", deleteError);
+        return { success: false, error: deleteError };
+      }
+
+      console.log(`✅ Ventas eliminadas de la base de datos`);
+
+      // 3. DESPUÉS restaurar el stock de cada producto
+      // Agrupar por product_id para sumar todas las cantidades
+      const stockToRestore = salesToDelete.reduce((acc, sale) => {
+        if (!acc[sale.product_id]) {
+          acc[sale.product_id] = 0;
+        }
+        acc[sale.product_id] += sale.quantity;
+        return acc;
+      }, {} as Record<string, number>);
+
+      console.log("Stock a restaurar por producto:", stockToRestore);
+
+      // 4. Restaurar stock para cada producto único
+      const stockRestorations = await Promise.all(
+        Object.entries(stockToRestore).map(
+          async ([productId, quantityToRestore]) => {
+            try {
+              // Obtener el stock actual del producto
+              const { data: product, error: productError } =
+                await this.getProductById(productId);
+
+              if (productError || !product) {
+                console.error(
+                  `Producto ${productId} no encontrado:`,
+                  productError
+                );
+                return {
+                  success: false,
+                  productId,
+                  error: productError || "Producto no encontrado",
+                };
+              }
+
+              // Calcular el nuevo stock
+              const restoredStock = product.stock + quantityToRestore;
+
+              console.log(`Restaurando stock para ${product.name}:`, {
+                currentStock: product.stock,
+                quantityToRestore,
+                newStock: restoredStock,
+              });
+
+              // Actualizar el stock
+              const { error: updateError } = await supabase
+                .from("products")
+                .update({
+                  stock: restoredStock,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", productId);
+
+              if (updateError) {
+                console.error(
+                  `Error restaurando stock para ${product.name}:`,
+                  updateError
+                );
+
+                // CRÍTICO: Si falla la restauración, registrar pero continuar
+                // En producción, considera implementar una cola de reintentos
+                return {
+                  success: false,
+                  productId,
+                  productName: product.name,
+                  error: updateError,
+                };
+              }
+
+              console.log(
+                `✅ Stock restaurado para ${product.name}: ${product.stock} → ${restoredStock} (+${quantityToRestore})`
+              );
+
+              return {
+                success: true,
+                productId,
+                productName: product.name,
+                previousStock: product.stock,
+                newStock: restoredStock,
+                quantityRestored: quantityToRestore,
+              };
+            } catch (error) {
+              console.error(
+                `Error procesando restauración para producto ${productId}:`,
+                error
+              );
+              return {
+                success: false,
+                productId,
+                error,
+              };
+            }
+          }
+        )
+      );
+
+      // 5. Verificar resultados
+      const failedRestorations = stockRestorations.filter((r) => !r.success);
+      const successfulRestorations = stockRestorations.filter((r) => r.success);
+
+      if (failedRestorations.length > 0) {
+        console.error(
+          "⚠️ Errores en restauración de stock:",
+          failedRestorations
+        );
+
+        // Las ventas ya fueron eliminadas, pero algunos stocks no se restauraron
+        return {
+          success: false,
+          error: new Error(
+            `Venta eliminada pero falló la restauración de stock de ${failedRestorations.length} producto(s). Revisa el inventario manualmente.`
+          ),
+        };
+      }
+
+      console.log(`✅ Operación completada exitosamente:`);
+      console.log(`   - Venta ${saleNumber} eliminada`);
+      console.log(`   - ${salesToDelete.length} registros de venta eliminados`);
+      console.log(
+        `   - ${successfulRestorations.length} productos con stock restaurado`
+      );
+
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("Error en deleteSaleBySaleNumber:", error);
+      return { success: false, error };
+    }
+  }
+
+  /**
+   * Función auxiliar para generar sale_number único y secuencial
+   */
+  static generateSaleNumber(): string {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, "0");
+    const day = now.getDate().toString().padStart(2, "0");
+    const timestamp = Date.now().toString().slice(-6);
+
+    return `V-${year}${month}${day}-${timestamp}`;
+  }
+
+  /**
    * GET - Obtener estadísticas de ventas
    */
   static async getSalesStats(dateRange?: {

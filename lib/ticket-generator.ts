@@ -7,6 +7,8 @@ export function generateTicket(products: Sale[]): void {
   const customerCuit: string = products[0]?.customer_email || "Sin CUIT";
   const paymentMethod: string = products[0]?.payment_method || "cash";
 
+  console.log("products on generateTicket", products);
+
   const total: number = products.reduce(
     (acc, p) => acc + p.unit_price * p.quantity,
     0

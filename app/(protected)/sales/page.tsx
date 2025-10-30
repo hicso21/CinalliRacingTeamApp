@@ -270,6 +270,9 @@ export default function SalesPage() {
     try {
       const saleDate = new Date().toISOString();
 
+      // Usar el sale_number generado previamente o crear uno nuevo
+      const finalSaleNumber = saleNumber || ProductService.generateSaleNumber();
+
       for (const item of saleData.items) {
         if (item.product.stock < item.quantity) {
           throw new Error(
@@ -279,12 +282,12 @@ export default function SalesPage() {
       }
 
       if (isOnline) {
-        await processSaleWithSupabase(saleData, saleDate);
+        await processSaleWithSupabase(saleData, saleDate, finalSaleNumber);
       } else {
-        await processSaleOffline(saleData, saleDate);
+        await processSaleOffline(saleData, saleDate, finalSaleNumber);
       }
 
-      updateLocalState(saleData, saleDate);
+      updateLocalState(saleData, saleDate, finalSaleNumber);
 
       const ticketSales: Sale[] = saleData.items.map((item) => ({
         sale_number: "V-" + saleNumber,
@@ -338,7 +341,8 @@ export default function SalesPage() {
 
   const processSaleWithSupabase = async (
     saleData: SaleCompletionData,
-    saleDate: string
+    saleDate: string,
+    saleNumber: string
   ) => {
     if (saleData.items.length > 1) {
       const saleItems = saleData.items.map((item) => ({
@@ -355,7 +359,7 @@ export default function SalesPage() {
 
       const { data, error } = await ProductService.createBulkSale(
         saleItems as Sale[],
-        "V-" + saleNumber,
+        saleNumber, // Usar el sale_number pasado como parámetro
         {
           customer_name: saleData.customer_name,
           customer_email: saleData.customer_email,
@@ -374,7 +378,7 @@ export default function SalesPage() {
     } else {
       const item = saleData.items[0];
       const saleRecord = {
-        sale_number: "V-" + saleNumber,
+        sale_number: saleNumber, // Usar el sale_number pasado como parámetro
         product_id: item.product.id || "",
         product_barcode: item.product.barcode,
         product_name: item.product.name || item.product.description || "",
@@ -406,12 +410,13 @@ export default function SalesPage() {
 
   const processSaleOffline = async (
     saleData: SaleCompletionData,
-    saleDate: string
+    saleDate: string,
+    saleNumber: string
   ) => {
     for (const item of saleData.items) {
       const totalAmount = item.quantity * item.unit_price;
       const saleRecord = {
-        sale_number: "V-" + saleNumber,
+        sale_number: saleNumber, // Usar el sale_number pasado como parámetro
         product_id: item.product.id || "",
         product_barcode: item.product.barcode,
         product_name: item.product.name || item.product.description || "",
@@ -438,10 +443,14 @@ export default function SalesPage() {
     setPendingSalesCount(OfflineSync.getPendingSales().length);
   };
 
-  const updateLocalState = (saleData: SaleCompletionData, saleDate: string) => {
+  const updateLocalState = (
+    saleData: SaleCompletionData,
+    saleDate: string,
+    saleNumber: string
+  ) => {
     const newSales: Sale[] = saleData.items.map((item, index) => ({
       id: `temp_${Date.now()}_${index}`,
-      sale_number: "V-" + saleNumber,
+      sale_number: saleNumber, // Usar el sale_number pasado como parámetro
       product_id: item.product.id || "",
       product_barcode: item.product.barcode,
       product_name: item.product.name || item.product.description || "",
@@ -516,6 +525,42 @@ export default function SalesPage() {
       });
     } finally {
       setSyncInProgress(false);
+    }
+  };
+
+  const handleDeleteSale = async (saleNumber: string) => {
+    console.log("=== DELETE SALE DEBUG ===");
+    console.log("Eliminando venta:", saleNumber);
+
+    try {
+      // Usar la nueva función del ProductService
+      const { success, error } = await ProductService.deleteSaleBySaleNumber(
+        saleNumber
+      );
+
+      if (!success || error) {
+        throw error instanceof Error
+          ? error
+          : new Error("Error al eliminar la venta");
+      }
+
+      toast({
+        title: "Venta eliminada",
+        description: `La venta ${saleNumber} fue eliminada y el stock fue restaurado`,
+      });
+
+      // Recargar datos
+      await loadData();
+    } catch (error) {
+      console.error("Error eliminando venta:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "No se pudo eliminar la venta",
+        variant: "destructive",
+      });
     }
   };
 
@@ -722,7 +767,11 @@ export default function SalesPage() {
         </CardContent>
       </Card> */}
 
-      <SalesHistory sales={sales} products={products} />
+      <SalesHistory
+        sales={sales}
+        products={products}
+        onDeleteSale={handleDeleteSale}
+      />
 
       <SaleDialog
         open={showSaleDialog}

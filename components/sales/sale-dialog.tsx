@@ -23,14 +23,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Minus, Trash2, ShoppingCart } from "lucide-react";
-import type { Product, Sale } from "@/lib/types";
+import type { Product } from "@/lib/types";
 import { ScannerStatus } from "@/components/barcode/scanner-status";
-import { ProductService } from "@/lib/product-service";
 
 interface SaleItem {
   product: Product;
   quantity: number;
   unit_price: number;
+  id?: string;
 }
 
 interface SaleDialogProps {
@@ -40,6 +40,11 @@ interface SaleDialogProps {
   onSaleComplete: (saleData: {
     items: Array<{ product: Product; quantity: number; unit_price: number }>;
     total: number;
+    discount?: number;
+    customer_name?: string;
+    customer_email?: string;
+    payment_method?: "cash" | "card" | "transfer" | "other";
+    notes?: string;
   }) => void | Promise<void>;
 }
 
@@ -132,7 +137,10 @@ export function SaleDialog({
           product.stock > 0 && // Only show products with stock
           (product.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
             product.brand?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-            product.barcode?.toLowerCase().includes(searchQuery?.toLowerCase()))
+            product.barcode
+              ?.toLowerCase()
+              .includes(searchQuery?.toLowerCase())) &&
+          saleItems.findIndex((item) => item.id === product.id) === -1
       )
       .slice(0, 8); // Limit results
 
@@ -171,6 +179,7 @@ export function SaleDialog({
           product,
           quantity: 1,
           unit_price: product.price,
+          id: product.id,
         },
       ]);
     }
@@ -219,35 +228,16 @@ export function SaleDialog({
     setIsProcessing(true);
 
     try {
-      // Podés enviar cada item al backend si querés
-      for (const item of saleItems) {
-        const saleData: Omit<
-          Sale,
-          "id" | "sale_number" | "created_at" | "updated_at"
-        > = {
-          product_id: item.product.id!,
-          product_barcode: item.product.barcode,
-          product_name: item.product.name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total_amount: item.quantity * item.unit_price,
-          discount_amount: discount,
-          final_amount: item.quantity * item.unit_price - discount,
-          payment_method: paymentMethod,
-          customer_name: customerName,
-          customer_email: customerEmail,
-          notes,
-          sale_date: new Date().toISOString(),
-          total: undefined,
-        };
-
-        await ProductService.createSale(saleData);
-      }
-
-      // 🔹 Ahora sí, devolver toda la venta como items + total
-      onSaleComplete({
+      // 🔹 SOLUCIÓN: Solo pasar los datos al parent component
+      // El parent (SalesPage) se encarga de guardar en Supabase
+      await onSaleComplete({
         items: saleItems,
         total: finalAmount,
+        discount,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        payment_method: paymentMethod,
+        notes,
       });
 
       // Reset form
@@ -431,7 +421,7 @@ export function SaleDialog({
                 />
                 <Input
                   type="email"
-                  placeholder="Email del cliente"
+                  placeholder="CUIL del cliente"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                 />
