@@ -97,88 +97,88 @@ export function ProductTable({
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
+    <div className="rounded-md border w-[calc(100vw-240px-110px)]">
+      <Table className="flex flex-col w-full">
+        <TableHeader className="flex w-full">
+          <TableRow className="flex flex-row justify-between">
             <TableHead
-              className="cursor-pointer hover:bg-muted/50"
+              className="flex items-center cursor-pointer hover:bg-muted/50 w-[130px]"
               onClick={() => handleSort("barcode")}
             >
               Código de Barras
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50"
+              className="flex items-center cursor-pointer hover:bg-muted/50 w-[calc(100vw-240px-110px-130px-81px-55px-58px-85px-103px-48px)]"
               onClick={() => handleSort("name")}
             >
               Producto
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50"
+              className="flex items-center cursor-pointer hover:bg-muted/50 w-[81px]"
               onClick={() => handleSort("category")}
             >
               Categoría
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50 text-right"
+              className="flex items-center cursor-pointer hover:bg-muted/50 text-right w-[55px]"
               onClick={() => handleSort("stock")}
             >
               Stock
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50 text-right"
+              className="flex items-center cursor-pointer hover:bg-muted/50 text-right w-[58px]"
               onClick={() => handleSort("price")}
             >
               Precio
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50"
+              className="flex items-center cursor-pointer hover:bg-muted/50 w-[85px]"
               onClick={() => handleSort("supplier")}
             >
               Proveedor
             </TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="w-[70px]"></TableHead>
+            <TableHead className="flex items-center w-[103px]">Estado</TableHead>
+            <TableHead className="flex items-center w-[48px]"></TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="flex flex-col w-full">
           {sortedProducts.map((product) => {
             const stockStatus = getStockStatus(product);
             const StatusIcon = stockStatus.icon;
 
             return (
-              <TableRow key={product.id}>
-                <TableCell className="font-mono text-sm">
+              <TableRow key={product.id} className="flex justify-between">
+                <TableCell className="font-mono text-sm w-[130px] flex flex-col justify-center">
                   {product.barcode}
                 </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {product.brand}
-                    </div>
+                <TableCell className="w-[calc(100vw-240px-110px-130px-81px-55px-58px-85px-103px-48px)]">
+                  <p className="font-medium text-wrap">{product.name}</p>
+                  <div className="text-sm text-muted-foreground">
+                    {product.brand}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{product.category}</Badge>
+                <TableCell className="w-[81px] flex flex-col justify-center">
+                  <Badge variant="outline" className="w-full">
+                    <p className="w-full text-wrap text-center">{product.category}</p>
+                  </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right w-[55px] flex flex-col justify-center">
                   <div className="font-medium">{product.stock}</div>
                   <div className="text-xs text-muted-foreground">
                     Min: {product.min_stock}
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-medium">
+                <TableCell className="text-right font-medium w-[58px] flex flex-col justify-center">
                   ${product.price.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-sm">{product.supplier}</TableCell>
-                <TableCell>
+                <TableCell className="text-sm w-[85px] flex flex-col justify-center">{product.supplier}</TableCell>
+                <TableCell className="w-[103px] flex flex-col justify-center">
                   <Badge variant={stockStatus.variant} className="gap-1">
                     <StatusIcon className="w-3 h-3" />
                     {stockStatus.status}
                   </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[48px] flex flex-col justify-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

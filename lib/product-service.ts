@@ -66,7 +66,7 @@ export class ProductService {
         data: demoProducts.map((p) => ({
           ...p,
           id: p.id ?? "",
-          description: p.description ?? "", // Ensure description is always a string
+          description: p.description ?? "",
           created_at: p.created_at ?? new Date().toISOString(),
           updated_at: p.updated_at ?? new Date().toISOString(),
         })),
@@ -83,17 +83,33 @@ export class ProductService {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const pageSize = 1000;
+      let allProducts: Product[] = [];
+      let page = 0;
+      let hasMore = true;
 
-      if (error) {
-        console.error("Error obteniendo productos:", error);
-        return { data: null, error };
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error("Error obteniendo productos:", error);
+          return { data: null, error };
+        }
+
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...data];
+          hasMore = data.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
 
-      return { data, error: null };
+      return { data: allProducts, error: null };
     } catch (error) {
       console.error("Error en getAllProducts:", error);
       return { data: null, error };
@@ -2159,19 +2175,19 @@ export class ProductService {
       const salesGrowth =
         yesterdayStats.sales > 0
           ? ((todayStats.sales - yesterdayStats.sales) / yesterdayStats.sales) *
-            100
+          100
           : todayStats.sales > 0
-          ? 100
-          : 0;
+            ? 100
+            : 0;
 
       const revenueGrowth =
         yesterdayStats.revenue > 0
           ? ((todayStats.revenue - yesterdayStats.revenue) /
-              yesterdayStats.revenue) *
-            100
+            yesterdayStats.revenue) *
+          100
           : todayStats.revenue > 0
-          ? 100
-          : 0;
+            ? 100
+            : 0;
 
       const comparison = {
         today: todayStats,

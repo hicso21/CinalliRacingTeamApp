@@ -22,6 +22,7 @@ interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
+  setProduct?: (product: Product | null) => void;
   onSave: (product: Omit<Product, "id" | "created_at" | "updated_at">) => void;
   categories: { id: string; name: string }[];
 }
@@ -30,6 +31,7 @@ export function ProductDialog({
   open,
   onOpenChange,
   product,
+  setProduct,
   onSave,
   categories,
 }: ProductDialogProps) {
@@ -229,9 +231,8 @@ export function ProductDialog({
                 id="category"
                 value={formData.category}
                 onChange={(e) => handleInputChange("category", e.target.value)}
-                className={`w-full h-10 px-3 rounded-md border bg-background text-sm cursor-pointer ${
-                  errors.category ? "border-destructive" : "border-input"
-                }`}
+                className={`w-full h-10 px-3 rounded-md border bg-background text-sm cursor-pointer ${errors.category ? "border-destructive" : "border-input"
+                  }`}
               >
                 <option value="">Seleccionar categoría</option>
                 {categories.map((cat) => (
@@ -264,7 +265,7 @@ export function ProductDialog({
                   handleInputChange(
                     "price",
                     (
-                      Number.parseFloat(e.target.value) * (1 + percentaje) || 0
+                      ((Number.parseFloat(e.target.value) * (1 + percentaje)) * (1.21)) * (1.15) || 0
                     ).toFixed(2) as unknown as number
                   );
                 }}
@@ -372,7 +373,7 @@ export function ProductDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { onOpenChange(false); setProduct(null) }}
             >
               Cancelar
             </Button>

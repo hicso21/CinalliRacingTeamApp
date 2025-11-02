@@ -39,11 +39,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-        <div className="hidden border-r bg-muted/40 md:block">
+      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[240px_1fr]">
+        <div className="hidden border-r bg-muted/40 md:block w-60">
           <Sidebar />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col w-full">
           <Header />
           <main className="flex-1 space-y-4 p-4 md:p-6 lg:p-8">{children}</main>
         </div>

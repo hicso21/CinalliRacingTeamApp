@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { ScannerStatus } from "@/components/barcode/scanner-status";
+import { ProductDialog } from "@/components/inventory/product-dialog";
+import { ProductTable } from "@/components/inventory/product-table";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,24 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ProductService } from "@/lib/product-service";
+import { useToast } from "@/hooks/use-toast";
 import { OfflineSync } from "@/lib/offline-sync";
+import { ProductService } from "@/lib/product-service";
 import type { Product } from "@/lib/types";
 import {
-  Plus,
-  Search,
-  Filter,
-  Download,
-  Upload,
   AlertTriangle,
+  Filter,
   Package,
+  Plus,
+  Search
 } from "lucide-react";
-import { ProductDialog } from "@/components/inventory/product-dialog";
-import { ProductTable } from "@/components/inventory/product-table";
-import { ScannerStatus } from "@/components/barcode/scanner-status";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
 
 interface InventoryStats {
   totalProducts: number;
@@ -379,7 +377,7 @@ export default function InventoryPage() {
         </div>
         <div className="flex items-center space-x-2">
           <Button
-            onClick={() => setShowProductDialog(true)}
+            onClick={() => { setShowProductDialog(true); setEditingProduct(null) }}
             className="racing-shadow cursor-pointer"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -500,7 +498,7 @@ export default function InventoryPage() {
             Lista completa de productos en inventario
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="w-(calc(100%))">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-muted-foreground">Cargando productos...</div>
@@ -520,6 +518,7 @@ export default function InventoryPage() {
         open={showProductDialog}
         onOpenChange={setShowProductDialog}
         product={editingProduct}
+        setProduct={setEditingProduct}
         onSave={handleProductSave}
         categories={categories}
       />

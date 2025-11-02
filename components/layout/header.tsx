@@ -99,7 +99,7 @@ export function Header() {
             </div>
 
             {lastSync && (
-              <div className="text-xs text-muted-foreground hidden sm:block">
+              <div className="text-xs text-muted-foreground hidden sm:block mr-4">
                 Última sync: {lastSync.toLocaleTimeString()}
               </div>
             )}
