@@ -62,6 +62,9 @@ export function SaleDialog({
   const [paymentMethod, setPaymentMethod] = useState<
     "cash" | "card" | "transfer" | "other"
   >("cash");
+  const [discountMethod, setDiscountMethod] = useState<
+    "direct" | "percentage"
+  >("direct");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -233,7 +236,7 @@ export function SaleDialog({
       await onSaleComplete({
         items: saleItems,
         total: finalAmount,
-        discount,
+        discount: discountMethod === 'percentage' ? total * (discount / 100) : discount,
         customer_name: customerName,
         customer_email: customerEmail,
         payment_method: paymentMethod,
@@ -256,7 +259,7 @@ export function SaleDialog({
     }
   };
 
-  const finalAmount = total - discount;
+  const finalAmount = total - (discountMethod === 'percentage' ? total * (discount / 100) : discount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -429,20 +432,34 @@ export function SaleDialog({
 
               <div className="space-y-3">
                 <Label>Detalles de Pago</Label>
-                <Select
-                  value={paymentMethod}
-                  onValueChange={(value: any) => setPaymentMethod(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Efectivo</SelectItem>
-                    <SelectItem value="card">Tarjeta</SelectItem>
-                    <SelectItem value="transfer">Transferencia</SelectItem>
-                    <SelectItem value="other">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-5">
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={(value: any) => setPaymentMethod(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Efectivo</SelectItem>
+                      <SelectItem value="card">Tarjeta</SelectItem>
+                      <SelectItem value="transfer">Transferencia</SelectItem>
+                      <SelectItem value="other">Otro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={discountMethod}
+                    onValueChange={(value: any) => setDiscountMethod(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Directo</SelectItem>
+                      <SelectItem value="percentage">Porcentaje</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Input
                   type="number"
                   placeholder="Descuento ($)"
@@ -476,7 +493,7 @@ export function SaleDialog({
               {discount > 0 && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Descuento:</span>
-                  <span>-${discount.toLocaleString()}</span>
+                  <span>-${discountMethod === 'percentage' ? total * (discount / 100) : discount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex items-center justify-between text-lg font-bold border-t pt-2">
